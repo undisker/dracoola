@@ -39,7 +39,10 @@
       "Bash(cmake:*)",
       "Bash(fpc:*)",
       "Bash(C:/msys64/usr/bin/bash.exe -lc \"cd /d/Panvyo/dependencies/drakula/dependencies/libtiff && mkdir -p build-win64 && cd build-win64 && cmake .. -G ''MSYS Makefiles'' -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -Dtiff-tools=OFF -Dtiff-tests=OFF -Dtiff-contrib=OFF -Dtiff-docs=OFF\")",
-      "Bash(C:/msys64/msys2_shell.cmd:*)"
+      "Bash(C:/msys64/msys2_shell.cmd:*)",
+      "Bash(C:/lazarus/lazbuild.exe --build-mode=Release \"Demos/ObjectPascal/Benchmark/Bench.lpi\")",
+      "Bash(C:/lazarus/lazbuild.exe --build-mode=Release \"Demos/ObjectPascal/DracoolaConvert/DracoolaConvert.lpi\")",
+      "Bash(C:/lazarus/lazbuild.exe:*)"
     ]
   }
 }
