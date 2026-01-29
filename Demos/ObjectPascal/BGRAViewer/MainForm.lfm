@@ -1,0 +1,129 @@
+object FormMain: TFormMain
+  Left = 200
+  Height = 600
+  Top = 100
+  Width = 900
+  AllowDropFiles = True
+  Caption = 'BGRA Image Viewer - Dracoola Imaging Library'
+  ClientHeight = 600
+  ClientWidth = 900
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  OnDropFiles = FormDropFiles
+  Position = poScreenCenter
+  LCLVersion = '3.0.0.0'
+  object PanelTop: TPanel
+    Left = 0
+    Height = 32
+    Top = 0
+    Width = 900
+    Align = alTop
+    BevelOuter = bvNone
+    ClientHeight = 32
+    ClientWidth = 900
+    TabOrder = 0
+    object LabelInfo: TLabel
+      Left = 8
+      Height = 20
+      Top = 6
+      Width = 200
+      Caption = 'No image loaded'
+      ParentColor = False
+    end
+  end
+  object PanelMain: TPanel
+    Left = 0
+    Height = 546
+    Top = 32
+    Width = 900
+    Align = alClient
+    BevelOuter = bvNone
+    ClientHeight = 546
+    ClientWidth = 900
+    TabOrder = 1
+    object ScrollBox: TScrollBox
+      Left = 0
+      Height = 546
+      Top = 0
+      Width = 900
+      HorzScrollBar.Page = 1
+      VertScrollBar.Page = 1
+      Align = alClient
+      BorderStyle = bsNone
+      ClientHeight = 546
+      ClientWidth = 900
+      TabOrder = 0
+      OnResize = ScrollBoxResize
+      object PaintBox: TPaintBox
+        Left = 0
+        Height = 546
+        Top = 0
+        Width = 900
+        Align = alClient
+        OnPaint = PaintBoxPaint
+      end
+    end
+  end
+  object StatusBar: TStatusBar
+    Left = 0
+    Height = 22
+    Top = 578
+    Width = 900
+    Panels = <>
+    SimplePanel = True
+  end
+  object MainMenu: TMainMenu
+    Left = 56
+    Top = 72
+    object MenuFile: TMenuItem
+      Caption = '&File'
+      object MenuOpen: TMenuItem
+        Caption = '&Open...'
+        ShortCut = 16463
+        OnClick = MenuOpenClick
+      end
+      object MenuSep1: TMenuItem
+        Caption = '-'
+      end
+      object MenuExit: TMenuItem
+        Caption = 'E&xit'
+        ShortCut = 32883
+        OnClick = MenuExitClick
+      end
+    end
+    object MenuView: TMenuItem
+      Caption = '&View'
+      object MenuFitToWindow: TMenuItem
+        Caption = '&Fit to Window'
+        Checked = True
+        ShortCut = 16454
+        OnClick = MenuFitToWindowClick
+      end
+      object MenuActualSize: TMenuItem
+        Caption = '&Actual Size'
+        ShortCut = 16449
+        OnClick = MenuActualSizeClick
+      end
+      object MenuSep2: TMenuItem
+        Caption = '-'
+      end
+      object MenuImageInfo: TMenuItem
+        Caption = 'Image &Info...'
+        ShortCut = 16457
+        OnClick = MenuImageInfoClick
+      end
+    end
+    object MenuHelp: TMenuItem
+      Caption = '&Help'
+      object MenuAbout: TMenuItem
+        Caption = '&About...'
+        OnClick = MenuAboutClick
+      end
+    end
+  end
+  object OpenDialog: TOpenPictureDialog
+    Title = 'Open Image'
+    Left = 152
+    Top = 72
+  end
+end
