@@ -159,7 +159,6 @@ Dracoola/
 │   ├── ImagingSdl.pas        # SDL surface support
 │   └── LibTiff/              # LibTiff bindings (dynamic)
 ├── Extras/                    # Additional tools and packages
-│   ├── Contrib/              # Community contributions
 │   ├── Extensions/           # Extra extensions (SquishLib)
 │   └── Packages/             # Optional legacy packages (GR32, SDL, OpenGL)
 ├── Demos/ObjectPascal/        # Demo applications
