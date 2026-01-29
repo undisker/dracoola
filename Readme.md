@@ -1,7 +1,7 @@
 Dracoola Imaging Library
 ===================================
 
-![Imaging Logo](./Demos/Data/logo.png)
+![Imaging Logo](https://raw.githubusercontent.com/undisker/dracoola/refs/heads/master/Demos/Data/Logo.png)
 
 High-performance fork of [Vampyre Imaging Library](https://github.com/galfar/imaginglib) with SIMD acceleration and multi-threading support.
 *FreePascal-only!*

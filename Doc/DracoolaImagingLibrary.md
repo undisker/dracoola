@@ -1,6 +1,6 @@
 # Dracoola Imaging Library
 
-![Imaging Logo](../Demos/Data/logo.png)
+![Imaging Logo](https://raw.githubusercontent.com/undisker/dracoola/refs/heads/master/Demos/Data/Logo.png)
 
 **High-Performance Fork of [Vampyre Imaging Library](https://github.com/galfar/imaginglib) for FreePascal/Lazarus**
 
