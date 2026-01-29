@@ -10,6 +10,22 @@
 {$DEFINE USE_ASM}             // If defined, assembler versions of some
                               // functions will be used (only for x86).
 
+{ Memory allocation options }
+{$DEFINE USE_ALIGNED_ALLOC}   // Use aligned memory allocation for image data
+                              // Required for SIMD operations (SSE2/AVX2/NEON)
+{$DEFINE USE_PLATFORM_ALIGNED_ALLOC}  // Use platform-specific aligned allocation
+                              // (_aligned_malloc on Windows, posix_memalign on Unix)
+                              // If undefined, falls back to manual alignment
+
+{ SIMD options }
+{.$DEFINE USE_SIMD}           // Enable SIMD optimizations (SSE2/AVX2/NEON)
+                              // Automatically detected based on target CPU
+{.$DEFINE USE_SIMD_RESIZE}    // Enable SIMD image resizing
+{.$DEFINE USE_SIMD_CONVERT}   // Enable SIMD pixel format conversion
+
+{ Multi-threading options }
+{.$DEFINE IMAGING_MULTITHREADED}  // Enable multi-threaded processing
+
                               // Debug options: If none of these two are defined
                               // your project settings are used.
 {.$DEFINE IMAGING_DEBUG}      // If defined, debug info, range/IO/overflow
@@ -62,25 +78,10 @@
 {$TYPEDADDRESS OFF}       // Typed pointers: off
 {$WRITEABLECONST OFF}     // Writeable constants: off
 
+{ FreePascal-only fork - Delphi support removed }
 {$IFNDEF FPC}
-  {$DEFINE DCC}           // if not using FPC then DCC compiler is used (Delphi/BCB)
-                          // others are not supported
+  {$FATAL This fork of Dracoola Imaging Library requires Free Pascal Compiler}
 {$ENDIF}
-
-{$IFDEF DCC}
-  {$DEFINE DELPHI}
-  {$IF (Defined(DCC) and (CompilerVersion >= 25.0))}
-    {$LEGACYIFEND ON}
-  {$IFEND}
-{$ENDIF}
-
-{$IF (Defined(DCC) and (CompilerVersion >= 18.5))}
-  {$IFDEF RELEASE}
-    {$UNDEF DEBUG} // If we are using Delphi 2007+ where you can set
-                   // DEBUG/RELEASE mode in project options and RELEASE
-                   // is currently set we undef DEBUG mode
-  {$ENDIF}
-{$IFEND}
 
 {$IFDEF DEBUG}
   {$DEFINE IMAGING_DEBUG}
@@ -92,30 +93,15 @@
   {$RANGECHECKS ON}
   {$IOCHECKS ON}
   {$OVERFLOWCHECKS ON}
-  {$IFDEF DCC}
-    {$OPTIMIZATION OFF}
-    {$STACKFRAMES ON}
-    {$LOCALSYMBOLS ON}
-    {$DEFINE MEMCHECK}
-  {$ENDIF}
-  {$IFDEF FPC}
-    {$S+}
-    {$CHECKPOINTER ON}
-  {$ENDIF}
+  {$S+}
+  {$CHECKPOINTER ON}
 {$ELSEIF Defined(IMAGING_RELEASE)}
   {$ASSERTIONS OFF}
   {$DEBUGINFO OFF}
   {$RANGECHECKS OFF}
   {$IOCHECKS OFF}
   {$OVERFLOWCHECKS OFF}
-  {$IFDEF DCC}
-    {$OPTIMIZATION ON}
-    {$STACKFRAMES OFF}
-    {$LOCALSYMBOLS OFF}
-  {$ENDIF}
-  {$IFDEF FPC}
-    {$S-}
-  {$ENDIF}
+  {$S-}
 {$IFEND}
 
 {$IF Defined(CPU86) and not Defined(CPUX86)}
@@ -133,9 +119,6 @@
   {$DEFINE MACOSX}
 {$IFEND}
 
-{$IF Defined(DCC) and (CompilerVersion < 23)}   // < XE2
-  {$DEFINE CPUX86} // Compatibility with older Delphi
-{$IFEND}
 
 {$IF Defined(WIN32) or Defined(WIN64)}
   {$DEFINE MSWINDOWS} // Compatibility with Delphi
@@ -145,49 +128,24 @@
   {$DEFINE POSIX} // Compatibility with Delphi
 {$IFEND}
 
-{ Compiler capabilities }
+{ Compiler capabilities - FPC }
 
-// Define if compiler supports inlining of functions and procedures
-{$IF (Defined(DCC) and (CompilerVersion >= 17)) or Defined(FPC)}
-  {$DEFINE HAS_INLINE}
-{$IFEND}
+// FPC supports inlining
+{$DEFINE HAS_INLINE}
 
-// Define if compiler supports advanced records with methods
-{$IF (Defined(DCC) and (CompilerVersion >= 18)) or
-  (Defined(FPC) and (FPC_FULLVERSION >= 20600))}
+// FPC supports advanced records since 2.6.0
+{$IF FPC_FULLVERSION >= 20600}
   {$DEFINE HAS_ADVANCED_RECORDS}
 {$IFEND}
 
-// Define if compiler supports operator overloading
-// (unfortunately Delphi and FPC operator overloading is not compatible).
 // FPC supports Delphi compatible operator overloads since 2.6.0
-{$IF (Defined(DCC) and (CompilerVersion >= 18)) or
-  (Defined(FPC) and (FPC_FULLVERSION >= 20600))}
+{$IF FPC_FULLVERSION >= 20600}
   {$DEFINE HAS_OPERATOR_OVERLOADING}
 {$IFEND}
 
-// Anonymous methods
-{$IF Defined(DCC) and (CompilerVersion >= 20) }
-  {$DEFINE HAS_ANON_METHODS}
-{$IFEND}
-
-// Generic types (Delphi and FPC implementations incompatible).
-// Update: FPC supports Delphi compatible generics since 2.6.0
-{$IF (Defined(DCC) and (CompilerVersion >= 20)) or
-  (Defined(FPC) and (FPC_FULLVERSION >= 20600))}
+// FPC supports Delphi compatible generics since 2.6.0
+{$IF FPC_FULLVERSION >= 20600}
   {$DEFINE HAS_GENERICS}
-{$IFEND}
-
-{ Compiler pecularities }
-
-// Delphi 64bit POSIX targets
-{$IF Defined(DCC) and (SizeOf(Integer) <> SizeOf(LongInt))}
-  {$DEFINE LONGINT_IS_NOT_INTEGER}
-{$IFEND}
-
-// They used to force IFEND, now they warn about it
-{$IF Defined(DCC) and (CompilerVersion >= 33)}
-  {$LEGACYIFEND ON}
 {$IFEND}
 
 { Imaging options check}
@@ -200,32 +158,30 @@
   {$UNDEF USE_ASM}
 {$IFEND}
 
-{$IFDEF FPC}
-  {$DEFINE COMPONENT_SET_LCL}
-  {$UNDEF COMPONENT_SET_VCL}
+{ Component set - LCL only for FreePascal }
+{$DEFINE COMPONENT_SET_LCL}
+
+{ More compiler options - Free Pascal specific }
+(* Some options set above (like min enum size) are reset to defaults by setting
+   $MODE so they are redeclared here *)
+
+(* FPC Compiler Mode
+   Using DELPHI mode for Delphi-compatible syntax:
+   - Partial record constant initialization (skipping fields)
+   - Automatic pointer array dereferencing (P[I] vs P^[I])
+   Note: This is 100% FreePascal - MODE DELPHI only enables
+   Delphi-style syntax, NOT the Delphi compiler *)
+{$MODE DELPHI}
+{$GOTO ON}               // Allow goto
+{$PACKRECORDS 8}         // Same as ALIGN 8
+{$PACKENUM 4}            // Min enum size: 4 B
+{$IFDEF CPU86}
+  {$ASMMODE INTEL}       // Intel assembler mode
+{$ENDIF}
+{$IFDEF CPUX64}
+  {$ASMMODE INTEL}       // Intel assembler mode for x64 too
 {$ENDIF}
 
-{$IFDEF DELPHI}
-  {$UNDEF COMPONENT_SET_LCL}
-  {$DEFINE COMPONENT_SET_VCL}
-{$ENDIF}
-
-{ More compiler options }
-
-{$IFDEF FPC}               // Free Pascal options - some options set above (like min enum size)
-                           // are reset to defaults by setting {$MODE} so they are
-                           // redeclared here
-  {$MODE DELPHI}           // compatible with delphi
-  {$GOTO ON}               // alow goto
-  {$PACKRECORDS 8}         // same as ALING 8 for Delphi
-  {$PACKENUM 4}            // Min enum size: 4 B
-  {$IFDEF CPU86}
-    {$ASMMODE INTEL}       // intel assembler mode
-  {$ENDIF}
-{$ENDIF}
-
-{$IFDEF HAS_INLINE}
-  {$INLINE ON}             // turns inlining on for compilers that support it
-{$ENDIF}
+{$INLINE ON}             // Enable inlining
 
 

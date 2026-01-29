@@ -1,83 +1,314 @@
-Vampyre Imaging Library
+Dracoola Imaging Library
 ===================================
 
-![Imaging Logo](https://raw.githubusercontent.com/galfar/imaginglib/master/Doc/Common/logo.png)
+![Imaging Logo](./Demos/Data/logo.png)
 
-Object Pascal image loading, saving, and manipulation library.
-
-<https://github.com/galfar/imaginglib>
-
-Homepage: <https://imaginglib.sourceforge.io>
-Issues: <https://github.com/galfar/imaginglib/issues>
-Discuss: <https://github.com/galfar/imaginglib/discussions>
+High-performance fork of [Vampyre Imaging Library](https://github.com/galfar/imaginglib) with SIMD acceleration and multi-threading support.
+*FreePascal-only!*
 
 Overview
 --------------------------
 
-In the beginning, the goal of the library was to provide cross-platform native Object Pascal support for loading images in various file formats, do some basic operations like resizing and pixel format conversions, and save back - and all this without needing external dependencies both build time and run time.
+Dracoola Imaging Library is a performance-focused fork of the Vampyre Imaging Library, optimized exclusively for FreePascal. 
+This fork removes introduces modern performance optimizations:
 
-Later, more features were added on top for convenience but the following still applies:
+- **LibJpeg-turbo integration** - SIMD-accelerated JPEG encoding/decoding (2-6x faster than pure Pascal)
+- **zlib-ng integration** - Optimized zlib replacement for faster PNG compression
+- **SIMD pixel conversions** - SSE2/AVX2 on x64, NEON on ARM64
+- **SIMD image resizing** - Hardware-accelerated bilinear/bicubic interpolation
+- **Multi-threading support** - Parallel image processing with thread pool
+- **Aligned memory allocation** - Optimized for SIMD operations
 
-- core library depends only on Delphi/FPC RTL (common subset nowadays)
-- keep the image in the original pixel format (for all operations or as long as possible)
-- if a feature needs some external library or platform specific stuff it's an optional extension
-- drawing and painting is not a main use of the library -> there are better and faster options for this
+Requirements
+--------------------------
 
-Status
------------
+- **Compiler**: FreePascal 3.2.0 or later (Delphi is *NOT* supported)
+- **Platforms**: Windows x64, Linux x64, macOS (x64 and ARM64)
+- **IDE**: Lazarus 2.0+ recommended
+- **GUI**: LCL (Lazarus Component Library) for GUI components
 
-Imaging started almost 20 years ago and since 2009 it is more or less in maintenance mode without big new features being added.
-Anyway, it is still alive, updated to work with current compilers and platforms, and here and there a new feature gets in. Documentation can be pretty outdated though.
+Installation
+--------------------------
 
-**Still compiles with Delphi 7**, and also with the latest Delphi and FPC.
+### Lazarus Package Installation
+
+1. Open Lazarus IDE
+2. Go to **Package** → **Open Package File (.lpk)**
+3. Navigate to `Packages/DracoolaImagingPackage.lpk`
+4. Click **Compile**, then **Use** → **Install**
+5. Restart Lazarus when prompted
+
+For extensions (TIFF, JPEG2000, etc.), also install `Packages/DracoolaImagingPackageExt.lpk`.
+
+External Libraries (Dynamic Linking)
+--------------------------
+
+For optimal performance, the following libraries should be available:
+
+### Windows x64
+- `libjpeg-62.dll` or `turbojpeg.dll` (from libjpeg-turbo)
+- `zlib1.dll` (zlib-compat) or `zlib-ng2.dll`
+
+### Linux x64
+- `libjpeg.so.62` (from libjpeg-turbo) or system package
+- `libz.so.1` (system) or `libz-ng.so.2`
+
+
+
+Install via package Manager:
+
+
+### Ubuntu/Debian
+`apt install libjpeg-turbo8 zlib1g`
+
+
+### Fedora/RHEL
+`dnf install libjpeg-turbo zlib`
+
+
+### macOS (x64 and ARM64)
+- `libjpeg.62.dylib` (from libjpeg-turbo or Homebrew)
+- System zlib (`libz.1.dylib`) is sufficient
+
+Install via Homebrew:
+
+`brew install jpeg-turbo`
+
+
+If external libraries are not available, the library falls back to pure Pascal implementations.
 
 Features
 --------------------------
 
+### Image File Formats
+
 Loading and saving of these image file formats:
 
 - PNG/APNG, MNG, JNG
-- JPEG
+- JPEG (via LibJpeg-turbo for maximum performance)
 - GIF
 - DDS, QOI, HDR
 - TGA, BMP
 - PCX, XPM, PNM/PPM, PSD
-- TIFF, JPEG2000 (not native Pascal, depends on platform)
+- TIFF, JPEG2000 (via Extensions package)
 - and more
 
-Supported platforms are:
-
-- Delphi: Windows, macOS
-- FPC: Windows, Linux x86/ARM, Android, macOS
+### Pixel Formats
 
 Many internal image data formats and conversions:
 
 - 8, 16, 24, 32, 48 and 64 bit RGB and ARGB formats
-- indexed formats
-- grayscale formats
-- floating point formats (IEEE754 and half precision)
-- compressed formats like DXT1/3/5, 3Dc, and BTC
+- Indexed formats
+- Grayscale formats
+- Floating point formats (IEEE754 and half precision)
+- Compressed formats like DXT1/3/5, 3Dc, and BTC
 
-Basic image manipulation functions working for all supported data formats and conversions between them (bilinear/bicubic resizing, rotation by any angle, color reduction, mipmap generation, ...).
+### Performance Features
 
-Image drawing with blending, linear and nonlinear filters, point transforms, binary morphology, drawing lines, ellipses, rectangles, etc.
+- **SIMD Conversions**: Hardware-accelerated pixel format conversions
+  - RGB24 <-> RGBA32
+  - RGBA <-> BGRA channel swapping
+  - Grayscale conversions
+  - Alpha premultiplication
 
-Low level library interface (accessible by other programming languages) and high level OOP one.
+- **SIMD Resizing**: Fast image scaling with:
+  - Nearest neighbor (fastest)
+  - Bilinear interpolation
+  - Bicubic interpolation (Catmull-Rom)
 
-Extensions for creating OpenGL, Direct3D, and SDL textures/surfaces.
+- **Multi-threading**: Parallel processing for:
+  - Large image operations
+  - Tile-based processing
+  - Configurable thread pool
 
-VCL, LCL, and FMX graphic classes and functions.
+### Basic Operations
 
-Support multi-images, direct access to image data,
-user-specified file formats, overriding default read and write functions,
-and more.
+- Image resizing (bilinear/bicubic)
+- Rotation by any angle
+- Color reduction
+- Mipmap generation
+- Image drawing with blending
+- Linear and nonlinear filters
+- Point transforms
+- Binary morphology
 
-License & Credits
+Project Structure
+--------------------------
+
+```
+Dracoola/
+├── Source/                    # Core library source
+│   ├── Imaging.pas           # Main unit
+│   ├── ImagingTypes.pas      # Type definitions
+│   ├── ImagingFormats.pas    # Pixel format handling
+│   ├── ImagingMemory.pas     # Aligned memory allocation
+│   ├── ImagingSimd.pas       # SIMD conversions
+│   ├── ImagingSimdResize.pas # SIMD resizing
+│   ├── ImagingThreadPool.pas # Thread pool
+│   ├── JpegTurbo/            # LibJpeg-turbo bindings
+│   └── ZLib/                 # zlib-ng bindings
+├── Packages/                  # Lazarus packages
+│   ├── DracoolaImagingPackage.lpk
+│   └── DracoolaImagingPackageExt.lpk
+├── Extensions/                # Optional format extensions
+│   ├── ImagingTiff.pas       # TIFF base support
+│   ├── ImagingJpeg2000.pas   # JPEG2000 support
+│   ├── OpenJpegDynLib.pas    # OpenJPEG 2.x bindings
+│   ├── ImagingOpenGL.pas     # OpenGL texture support
+│   ├── ImagingGraphics32.pas # Graphics32 integration
+│   ├── ImagingSdl.pas        # SDL surface support
+│   └── LibTiff/              # LibTiff bindings (dynamic)
+├── Extras/                    # Additional tools and packages
+│   ├── Contrib/              # Community contributions
+│   ├── Extensions/           # Extra extensions (SquishLib)
+│   └── Packages/             # Optional legacy packages (GR32, SDL, OpenGL)
+├── Demos/ObjectPascal/        # Demo applications
+│   ├── LCLImager/            # LCL image viewer
+│   ├── ImageBrowser/         # LCL image browser
+│   ├── Benchmark/            # Performance benchmark
+│   ├── DracoolaConvert/      # Command-line converter
+│   ├── OpenGLDemo/           # OpenGL texture demo
+│   └── SDLDemo/              # SDL surface demo
+├── Scripts/                   # Build scripts (FPC cross-platform)
+└── Doc/                       # Documentation
+```
+
+Extensions and Dependencies
+--------------------------
+
+### Core Extensions (Extensions/)
+
+| Extension | External Dependency | Platforms |
+|-----------|-------------------|-----------|
+| `ImagingTiff.pas` | libtiff (dynamic only) | All |
+| `ImagingJpeg2000.pas` | OpenJPEG (dynamic only) | All |
+| `ImagingOpenGL.pas` | OpenGL (dglOpenGL or FPC gl units) | All |
+| `ImagingGraphics32.pas` | Graphics32 library | All |
+| `ImagingSdl.pas` | SDL 1.2 or SDL 2.0 | All |
+| `ImagingPcx.pas` | None | All |
+| `ImagingPsd.pas` | None | All |
+| `ImagingXpm.pas` | None | All |
+
+### LibTiff Support
+
+TIFF support uses **dynamic linking** only (`LibTiffDynLib.pas`). Requires system `libtiff`:
+  - Windows: `libtiff.dll`
+  - Linux: `libtiff.so.5`
+  - macOS: `libtiff.5.dylib`
+
+Install via package manager:
+- Ubuntu/Debian: `apt install libtiff5`
+- Fedora/RHEL: `dnf install libtiff`
+- macOS: `brew install libtiff`
+
+### JPEG2000 Support
+
+JPEG2000 support uses **dynamic linking** only (`OpenJpegDynLib.pas`). Requires system `openjpeg`:
+  - Windows: `openjp2.dll`
+  - Linux: `libopenjp2.so.7`
+  - macOS: `libopenjp2.7.dylib`
+
+Install via package manager:
+- Ubuntu/Debian: `apt install libopenjp2-7`
+- Fedora/RHEL: `dnf install openjpeg2`
+- macOS: `brew install openjpeg`
+
+### Extra Packages (Extras/Packages/)
+
+| Package | Purpose | Dependency |
+|---------|---------|------------|
+| `DracoolaImagingPackage_OpenGL.lpk` | OpenGL texture support | OpenGL |
+| `DracoolaImagingPackage_GR32.lpk` | Graphics32 integration | Graphics32 |
+| `DracoolaImagingPackage_SDL.lpk` | SDL surface support | SDL |
+
+Configuration
+--------------------------
+
+Edit `Source/ImagingOptions.inc` to configure:
+
+```pascal
+{ Memory allocation }
+{$DEFINE USE_ALIGNED_ALLOC}           // Aligned memory for SIMD
+{$DEFINE USE_PLATFORM_ALIGNED_ALLOC}  // Use OS-specific allocation
+
+{ SIMD options }
+{.$DEFINE USE_SIMD}                   // Enable SIMD optimizations
+{.$DEFINE USE_SIMD_RESIZE}            // Enable SIMD resizing
+{.$DEFINE USE_SIMD_CONVERT}           // Enable SIMD conversions
+
+{ Multi-threading }
+{.$DEFINE IMAGING_MULTITHREADED}      // Enable thread pool
+```
+
+New Units
+--------------------------
+
+| Unit | Description |
+|------|-------------|
+| `ImagingMemory.pas` | Aligned memory allocation for SIMD |
+| `ImagingSimd.pas` | SIMD pixel format conversions |
+| `ImagingSimdResize.pas` | SIMD image resizing |
+| `ImagingThreadPool.pas` | Thread pool for parallel processing |
+| `JpegTurbo/libjpegturbo.pas` | LibJpeg-turbo bindings |
+| `ZLib/zlibng_bindings.pas` | zlib-ng bindings |
+
+Quick Start
+--------------------------
+
+```pascal
+program ImageExample;
+
+uses
+  Imaging, ImagingTypes, ImagingClasses;
+
+var
+  Img: TSingleImage;
+begin
+  Img := TSingleImage.Create;
+  try
+    // Load an image
+    Img.LoadFromFile('input.jpg');
+
+    // Resize to 800x600
+    Img.Resize(800, 600, rfBicubic);
+
+    // Convert to grayscale
+    Img.ConvertToPixelFormat(ifGray8);
+
+    // Save as PNG
+    Img.SaveToFile('output.png');
+  finally
+    Img.Free;
+  end;
+end.
+```
+
+Migration from Vampyre Imaging Library
+--------------------------
+
+This fork is API-compatible with the original library for *most* use cases. Key differences:
+
+1. **Delphi is not supported** - FPC Syntax and standard libraries are used. No support for VCL component, LCL support only.
+2. **64-bit optimizations** - support for 32-bit platforms is not considered
+3. **Dynamic linking** - External libraries used for JPEG/zlib by Default. Static linking for libtiff and openjpeg has been removed.
+4. **New units** - Additional units for SIMD and threading
+
+
+To migrate:
+1. Ensure you're using FreePascal 3.2.0+ with Lazarus
+2. Update package references from `VampyreImagingPackage` to `DracoolaImagingPackage`
+3. Distribute required DLLs/SOs with your application (or rely on fallbacks, where avaialble)
+
+License
 ------------------
 
-This Source Code Form is subject to the terms of the Mozilla Public
-License, v. 2.0. If a copy of the MPL was not distributed with this
-file, You can obtain one at https://mozilla.org/MPL/2.0.
+This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. 
+If a copy of the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0.
 
-Developed by Marek Mauder
+Credits
+------------------
 
+- Original Vampyre Imaging Library by Marek Mauder
+- Dracoola fork performance optimizations by Oleg Akopov
+
+Based on Vampyre Imaging Library: <https://github.com/galfar/imaginglib>

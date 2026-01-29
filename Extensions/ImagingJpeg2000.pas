@@ -1,5 +1,5 @@
 {
-  Vampyre Imaging Library
+  Dracoola Imaging Library
   by Marek Mauder
   https://github.com/galfar/imaginglib
   https://imaginglib.sourceforge.io
@@ -7,40 +7,35 @@
   This Source Code Form is subject to the terms of the Mozilla Public
   License, v. 2.0. If a copy of the MPL was not distributed with this
   file, You can obtain one at https://mozilla.org/MPL/2.0.
-} 
+}
 
-{ This unit contains image format loader/saver for Jpeg 2000 images.}
+{ This unit contains image format loader/saver for JPEG 2000 images
+  using OpenJPEG 2.x dynamic library.
+
+  Supported platforms:
+    Windows x64: openjp2.dll
+    Linux x64: libopenjp2.so.7
+    macOS x64/ARM64: libopenjp2.7.dylib
+}
 unit ImagingJpeg2000;
 
 {$I ImagingOptions.inc}
 
 interface
 
-{
-  JPEG2000 support needs precompiled C object files and only some targets are
-  available.
-
-  Delphi targets: Windows 32b
-  FPC targets: Windows 32b, Linux 32+64b, OSX 32b
-}
-
-{$IF (Defined(DCC) and Defined(MSWINDOWS) and Defined(CPUX86)) or
-     (Defined(FPC) and Defined(MSWINDOWS) and Defined(CPUX86)) or
-     (Defined(FPC) and Defined(LINUX) and (Defined(CPUX86) or Defined(CPUX64))) or
-     (Defined(FPC) and Defined(MACOS) and Defined(CPUX86))}
 uses
   SysUtils, ImagingTypes, Imaging, ImagingColors, ImagingIO, ImagingUtility,
-  ImagingExtFileFormats, OpenJpeg;
+  ImagingExtFileFormats, OpenJpegDynLib;
 
 type
   { Type Jpeg 2000 file (needed for OpenJPEG codec settings).}
   TJpeg2000FileType = (jtInvalid, jtJP2, jtJ2K, jtJPT);
 
-  { Class for loading/saving Jpeg 2000 images. It uses OpenJPEG library
-    compiled to object files and linked to Object Pascal program. Jpeg 2000
-    supports wide variety of data formats. You can have arbitrary number
-    of components/channels, each with different bitdepth and optional
-    "signedness". Jpeg 2000 images can be lossy or lossless compressed.
+  { Class for loading/saving Jpeg 2000 images. It uses OpenJPEG 2.x library
+    loaded dynamically. Jpeg 2000 supports wide variety of data formats.
+    You can have arbitrary number of components/channels, each with different
+    bitdepth and optional "signedness". Jpeg 2000 images can be lossy or
+    lossless compressed.
 
     Imaging can load most data formats (except images
     with component bitdepth > 16 => no Imaging data format equivalents).
@@ -105,6 +100,57 @@ const
   JP2Signature: TChar8 = #0#0#0#$0C#$6A#$50#$20#$20;
   J2KSignature: TChar4 = #$FF#$4F#$FF#$51;
 
+type
+  TStreamWrapper = record
+    IO: TIOFunctions;
+    Handle: TImagingHandle;
+    StartPos: Int64;
+    Size: Int64;
+  end;
+  PStreamWrapper = ^TStreamWrapper;
+
+{ Stream callback functions for OpenJPEG 2.x }
+
+function StreamRead(p_buffer: Pointer; p_nb_bytes: OPJ_SIZE_T; p_user_data: Pointer): OPJ_SIZE_T; cdecl;
+var
+  Wrapper: PStreamWrapper;
+begin
+  Wrapper := PStreamWrapper(p_user_data);
+  Result := Wrapper.IO.Read(Wrapper.Handle, p_buffer, p_nb_bytes);
+  if Result = 0 then
+    Result := OPJ_SIZE_T(-1); // EOF indicator
+end;
+
+function StreamWrite(p_buffer: Pointer; p_nb_bytes: OPJ_SIZE_T; p_user_data: Pointer): OPJ_SIZE_T; cdecl;
+var
+  Wrapper: PStreamWrapper;
+begin
+  Wrapper := PStreamWrapper(p_user_data);
+  Result := Wrapper.IO.Write(Wrapper.Handle, p_buffer, p_nb_bytes);
+end;
+
+function StreamSkip(p_nb_bytes: OPJ_OFF_T; p_user_data: Pointer): OPJ_OFF_T; cdecl;
+var
+  Wrapper: PStreamWrapper;
+begin
+  Wrapper := PStreamWrapper(p_user_data);
+  Result := Wrapper.IO.Seek(Wrapper.Handle, p_nb_bytes, smFromCurrent);
+  if Result >= 0 then
+    Result := p_nb_bytes
+  else
+    Result := -1;
+end;
+
+function StreamSeek(p_nb_bytes: OPJ_OFF_T; p_user_data: Pointer): OPJ_BOOL; cdecl;
+var
+  Wrapper: PStreamWrapper;
+  NewPos: Int64;
+begin
+  Wrapper := PStreamWrapper(p_user_data);
+  NewPos := Wrapper.IO.Seek(Wrapper.Handle, Wrapper.StartPos + p_nb_bytes, smFromBeginning);
+  Result := (NewPos >= 0);
+end;
+
 procedure TJpeg2000FileFormat.Define;
 begin
   inherited;
@@ -126,7 +172,6 @@ end;
 
 procedure TJpeg2000FileFormat.CheckOptionsValidity;
 begin
-  // Check if option values are valid
   if not (FQuality in [1..100]) then
     FQuality := Jpeg2000DefaultQuality;
 end;
@@ -142,7 +187,6 @@ begin
     ReadCount := Read(Handle, @Id, SizeOf(Id));
     if ReadCount = SizeOf(Id) then
     begin
-      // Check if we have full JP2 file format or just J2K code stream
       if CompareMem(@Id, @JP2Signature, SizeOf(JP2Signature)) then
         Result := jtJP2
       else if CompareMem(@Id, @J2KSignature, SizeOf(J2KSignature)) then
@@ -157,62 +201,60 @@ function TJpeg2000FileFormat.LoadData(Handle: TImagingHandle;
 type
   TChannelInfo = record
     DestOffset: Integer;
-    CompType: OPJ_COMPONENT_TYPE;
+    IsAlpha: Boolean;
     Shift: Integer;
     SrcMaxValue: Integer;
     DestMaxValue: Integer;
   end;
 var
   FileType: TJpeg2000FileType;
-  Buffer: PByte;
-  BufferSize, ChannelSize, I: Integer;
+  ChannelSize, I: Integer;
   Info: TImageFormatInfo;
-  dinfo: popj_dinfo_t;
-  parameters: opj_dparameters_t;
-  cio: popj_cio_t;
-  image: popj_image_t;
-  StartPos: Int64;
+  Codec: opj_codec_t;
+  Stream: opj_stream_t;
+  Parameters: opj_dparameters_t;
+  Image: popj_image_t;
+  Wrapper: TStreamWrapper;
   Channels: array of TChannelInfo;
+  Format: TImageFormat;
 
-  procedure WriteSample(Dest: PByte; ChannelSize, Value: Integer); {$IFDEF USE_INLINE}inline;{$ENDIF}
+  procedure WriteSample(Dest: PByte; AChannelSize, Value: Integer); {$IFDEF USE_INLINE}inline;{$ENDIF}
   begin
-    case ChannelSize of
+    case AChannelSize of
       1: Dest^ := Value;
       2: PWord(Dest)^ := Value;
       4: PUInt32(Dest)^ := Value;
     end;
   end;
 
-  procedure CopySample(Src, Dest: PByte; ChannelSize: Integer); {$IFDEF USE_INLINE}inline;{$ENDIF}
+  procedure CopySample(Src, Dest: PByte; AChannelSize: Integer); {$IFDEF USE_INLINE}inline;{$ENDIF}
   begin
-    case ChannelSize of
+    case AChannelSize of
       1: Dest^ := Src^;
       2: PWord(Dest)^ := PWord(Src)^;
       4: PUInt32(Dest)^ := PUInt32(Src)^;
     end;
   end;
 
-  procedure ReadChannel(const Image: TImageData; const Info: TChannelInfo; const Comp: opj_image_comp; BytesPerPixel: Integer);
+  procedure ReadChannel(var Img: TImageData; const CInfo: TChannelInfo; const Comp: opj_image_comp; BytesPerPixel: Integer);
   var
     X, Y, SX, SY, SrcIdx, LineBytes: Integer;
     DestPtr, NewPtr, LineUpPtr: PByte;
     DontScaleSamples: Boolean;
   begin
-    DontScaleSamples := (Info.SrcMaxValue = Info.DestMaxValue) or not FScaleOutput;
-    LineBytes := Image.Width * BytesPerPixel;
-    DestPtr := @PByteArray(Image.Bits)[Info.DestOffset];
+    DontScaleSamples := (CInfo.SrcMaxValue = CInfo.DestMaxValue) or not FScaleOutput;
+    LineBytes := Img.Width * BytesPerPixel;
+    DestPtr := @PByteArray(Img.Bits)[CInfo.DestOffset];
     SrcIdx := 0;
 
     if (Comp.dx = 1) and (Comp.dy = 1) then
     begin
-      // X and Y sample separation is 1 so just need to assign component values
-      // to image pixels one by one
-      for Y := 0 to Image.Height * Image.Width - 1 do
+      for Y := 0 to Img.Height * Img.Width - 1 do
       begin
         if DontScaleSamples then
-          WriteSample(DestPtr, ChannelSize, Comp.data[SrcIdx] + Info.Shift)
+          WriteSample(DestPtr, ChannelSize, Comp.data[SrcIdx] + CInfo.Shift)
         else
-          WriteSample(DestPtr, ChannelSize, MulDiv(Comp.data[SrcIdx] + Info.Shift, Info.DestMaxValue, Info.SrcMaxValue));
+          WriteSample(DestPtr, ChannelSize, MulDiv(Comp.data[SrcIdx] + CInfo.Shift, CInfo.DestMaxValue, CInfo.SrcMaxValue));
 
         Inc(SrcIdx);
         Inc(DestPtr, BytesPerPixel);
@@ -220,40 +262,36 @@ var
     end
     else
     begin
-      // Sample separation is active - component is sub-sampled. Real component
-      // dimensions are [Comp.w * Comp.dx, Comp.h * Comp.dy]
-      for Y := 0 to Comp.h - 1 do
+      for Y := 0 to Integer(Comp.h) - 1 do
       begin
-        LineUpPtr := @PByteArray(Image.Bits)[Y * Comp.dy * LineBytes + Info.DestOffset];
+        LineUpPtr := @PByteArray(Img.Bits)[Y * Integer(Comp.dy) * LineBytes + CInfo.DestOffset];
         DestPtr := LineUpPtr;
 
-        for X := 0 to Comp.w - 1 do
+        for X := 0 to Integer(Comp.w) - 1 do
         begin
           if DontScaleSamples then
-            WriteSample(DestPtr, ChannelSize, Comp.data[SrcIdx] + Info.Shift)
+            WriteSample(DestPtr, ChannelSize, Comp.data[SrcIdx] + CInfo.Shift)
           else
-            WriteSample(DestPtr, ChannelSize, MulDiv(Comp.data[SrcIdx] + Info.Shift, Info.DestMaxValue, Info.SrcMaxValue));
+            WriteSample(DestPtr, ChannelSize, MulDiv(Comp.data[SrcIdx] + CInfo.Shift, CInfo.DestMaxValue, CInfo.SrcMaxValue));
 
           NewPtr := DestPtr;
 
-          for SX := 1 to Comp.dx - 1 do
+          for SX := 1 to Integer(Comp.dx) - 1 do
           begin
-            if X * Comp.dx + SX >= Image.Width then Break;
-            // Replicate pixels on line
+            if X * Integer(Comp.dx) + SX >= Img.Width then Break;
             Inc(NewPtr, BytesPerPixel);
             CopySample(DestPtr, NewPtr, ChannelSize);
           end;
 
           Inc(SrcIdx);
-          Inc(DestPtr, BytesPerPixel * Comp.dx);
+          Inc(DestPtr, BytesPerPixel * Integer(Comp.dx));
         end;
 
-        for SY := 1 to Comp.dy - 1 do
+        for SY := 1 to Integer(Comp.dy) - 1 do
         begin
-          if Y * Comp.dy + SY >= Image.Height then Break;
-          // Replicate line
-          NewPtr := @PByteArray(Image.Bits)[(Y * Comp.dy + SY) * LineBytes + Info.DestOffset];
-          for X := 0 to Image.Width - 1 do
+          if Y * Integer(Comp.dy) + SY >= Img.Height then Break;
+          NewPtr := @PByteArray(Img.Bits)[(Y * Integer(Comp.dy) + SY) * LineBytes + CInfo.DestOffset];
+          for X := 0 to Img.Width - 1 do
           begin
             CopySample(LineUpPtr, NewPtr, ChannelSize);
             Inc(LineUpPtr, BytesPerPixel);
@@ -266,13 +304,13 @@ var
 
   procedure ConvertYCbCrToRGB(Pixels: PByte; NumPixels, BytesPerPixel: Integer);
   var
-    I: Integer;
+    J: Integer;
     PixPtr: PByte;
     CY, CB, CR: Byte;
     CYW, CBW, CRW: Word;
   begin
     PixPtr := Pixels;
-    for I := 0 to NumPixels - 1 do
+    for J := 0 to NumPixels - 1 do
     begin
       if BytesPerPixel in [3, 4] then
       with PColor24Rec(PixPtr)^ do
@@ -296,136 +334,144 @@ var
 
 begin
   Result := False;
-  image := nil;
-  cio := nil;
-  opj_set_default_decoder_parameters(@parameters);
-  // Determine which codec to use
+  Image := nil;
+  Stream := nil;
+  Codec := nil;
+
   FileType := GetFileType(Handle);
+  if FileType = jtInvalid then
+    Exit;
+
+  // Setup stream wrapper
+  Wrapper.IO := GetIO;
+  Wrapper.Handle := Handle;
+  Wrapper.StartPos := Wrapper.IO.Tell(Handle);
+  Wrapper.Size := ImagingIO.GetInputSize(Wrapper.IO, Handle);
+
+  // Create codec based on file type
   case FileType of
-    jtJP2: dinfo := opj_create_decompress(CODEC_JP2);
-    jtJ2K: dinfo := opj_create_decompress(CODEC_J2K);
-    jtJPT: dinfo := opj_create_decompress(CODEC_JPT);
+    jtJP2: Codec := opj_create_decompress(OPJ_CODEC_JP2);
+    jtJ2K: Codec := opj_create_decompress(OPJ_CODEC_J2K);
+    jtJPT: Codec := opj_create_decompress(OPJ_CODEC_JPT);
   else
     Exit;
   end;
-  // Set event manager to nil to avoid getting messages
-  dinfo.event_mgr := nil;
-  // Currently OpenJPEG can load images only from memory so we have to
-  // preload whole input to mem buffer. Not good but no other way now.
-  // At least we set stream pos to end of JP2 data after loading (we will now
-  // the exact size by then).
-  StartPos := GetIO.Tell(Handle);
-  BufferSize := ImagingIO.GetInputSize(GetIO, Handle);
-  GetMem(Buffer, BufferSize);
 
-  SetLength(Images, 1);
-  with GetIO, Images[0] do
+  if Codec = nil then
+    Exit;
+
   try
-    Read(Handle, Buffer, BufferSize);
-    cio := opj_cio_open(opj_common_ptr(dinfo), Buffer, BufferSize);
-    opj_setup_decoder(dinfo, @parameters);
-    // Decode image
-    image := opj_decode(dinfo, cio);
-    if image = nil then
+    // Setup decoder parameters
+    opj_set_default_decoder_parameters(@Parameters);
+    if not opj_setup_decoder(Codec, @Parameters) then
       Exit;
 
-    // Determine which Imaging data format to use according to
-    // decoded image components
-    case image.numcomps of
-      2: case image.comps[0].prec of
+    // Create stream
+    Stream := opj_stream_create(OPJ_J2K_STREAM_CHUNK_SIZE, OPJ_TRUE);
+    if Stream = nil then
+      Exit;
+
+    opj_stream_set_read_function(Stream, @StreamRead);
+    opj_stream_set_skip_function(Stream, @StreamSkip);
+    opj_stream_set_seek_function(Stream, @StreamSeek);
+    opj_stream_set_user_data(Stream, @Wrapper, nil);
+    opj_stream_set_user_data_length(Stream, Wrapper.Size);
+
+    // Read header
+    if not opj_read_header(Stream, Codec, @Image) then
+      Exit;
+
+    if Image = nil then
+      Exit;
+
+    // Decode the image
+    if not opj_decode(Codec, Stream, Image) then
+      Exit;
+
+    opj_end_decompress(Codec, Stream);
+
+    // Determine which Imaging data format to use
+    Format := ifUnknown;
+    case Image.numcomps of
+      2: case Image.comps[0].prec of
             1..8: Format := ifA8Gray8;
            9..16: Format := ifA16Gray16;
          end;
-      3: case image.comps[0].prec of
+      3: case Image.comps[0].prec of
             1..8: Format := ifR8G8B8;
            9..16: Format := ifR16G16B16;
          end;
-      4: case image.comps[0].prec of
+      4: case Image.comps[0].prec of
             1..8: Format := ifA8R8G8B8;
            9..16: Format := ifA16R16G16B16;
          end;
     else
-      // There is only one component or there is more than four =>
-      // just load the first one as gray
-      case image.comps[0].prec of
+      case Image.comps[0].prec of
            1..8: Format := ifGray8;
           9..16: Format := ifGray16;
          17..32: Format := ifGray32;
        end;
     end;
-    // Exit if no compatible format was found
+
     if Format = ifUnknown then
       Exit;
 
-    NewImage(image.x1 - image.x0, image.y1 - image.y0, Format, Images[0]);
+    SetLength(Images, 1);
+    NewImage(Image.x1 - Image.x0, Image.y1 - Image.y0, Format, Images[0]);
     Info := GetFormatInfo(Format);
     ChannelSize := Info.BytesPerPixel div Info.ChannelCount;
     SetLength(Channels, Info.ChannelCount);
 
-    // Get information about all channels/components of JP2 file
+    // Get information about all channels/components
     for I := 0 to Info.ChannelCount - 1 do
     begin
-      // Get component type for this channel and based on this
-      // determine where in dest image bits write this channel's data
-      Channels[I].CompType := image.comps[I].comp_type;
-      case Channels[I].CompType of
-        COMPTYPE_UNKNOWN:
-          begin
-            if Info.ChannelCount <> 4 then
-            begin
-              // Missing CDEF box in file - usually BGR order
-              Channels[I].DestOffset := image.numcomps - I - 1
-            end
-            else
-            begin
-              // Missing CDEF box in file - usually ABGR order
-              if I = 3 then
-                Channels[I].DestOffset := 3
-              else
-                Channels[I].DestOffset := image.numcomps - I - 2
-            end;
-          end;
-        COMPTYPE_R:       Channels[I].DestOffset := 2;
-        COMPTYPE_G:       Channels[I].DestOffset := 1;
-        COMPTYPE_B:       Channels[I].DestOffset := 0;
-        COMPTYPE_CB:      Channels[I].DestOffset := 1;
-        COMPTYPE_CR:      Channels[I].DestOffset := 0;
-        COMPTYPE_OPACITY: Channels[I].DestOffset := 3;
-        COMPTYPE_Y:
-          case image.color_space of
-            CLRSPC_SYCC: Channels[I].DestOffset := 2; // Y is intensity part of YCC
-            CLRSPC_GRAY: Channels[I].DestOffset := 0; // Y is independent gray channel
-          end;
+      Channels[I].IsAlpha := Image.comps[I].alpha <> 0;
+
+      if Channels[I].IsAlpha then
+        Channels[I].DestOffset := Info.ChannelCount - 1
+      else if Info.ChannelCount <= 2 then
+        // Grayscale
+        Channels[I].DestOffset := 0
+      else
+      begin
+        // RGB - OpenJPEG stores in RGB order, we need BGR
+        case I of
+          0: Channels[I].DestOffset := 2; // R -> offset 2
+          1: Channels[I].DestOffset := 1; // G -> offset 1
+          2: Channels[I].DestOffset := 0; // B -> offset 0
+          3: Channels[I].DestOffset := 3; // A -> offset 3
+        else
+          Channels[I].DestOffset := I;
+        end;
       end;
-      // Scale channel offset
+
       Channels[I].DestOffset := Channels[I].DestOffset * ChannelSize;
-      // Signed componets must be scaled to [0, 1] interval (depends on precision)
-      if image.comps[I].sgnd = 1 then
-        Channels[I].Shift := 1 shl (image.comps[I].prec - 1);
-      // Max channel values used to easier scaling of precisions
-      // not supported by Imaging to supported ones (like 12bits etc.).
-      Channels[I].SrcMaxValue := 1 shl image.comps[I].prec - 1;
-      Channels[I].DestMaxValue := 1 shl (ChannelSize * 8) - 1;
+
+      if Image.comps[I].sgnd <> 0 then
+        Channels[I].Shift := 1 shl (Image.comps[I].prec - 1)
+      else
+        Channels[I].Shift := 0;
+
+      Channels[I].SrcMaxValue := (1 shl Image.comps[I].prec) - 1;
+      Channels[I].DestMaxValue := (1 shl (ChannelSize * 8)) - 1;
     end;
 
-    // Images components are stored separately in JP2, each can have
-    // different dimensions, bitdepth, ...
+    // Read all channels
     for I := 0 to Info.ChannelCount - 1 do
-      ReadChannel(Images[0], Channels[I], image.comps[I], Info.BytesPerPixel);
+      ReadChannel(Images[0], Channels[I], Image.comps[I], Info.BytesPerPixel);
 
-    // If we have YCbCr image we need to convert it to RGB
-    if (image.color_space = CLRSPC_SYCC) and (Info.ChannelCount in [3, 4]) then
-      ConvertYCbCrToRGB(Bits, Width * Height, Info.BytesPerPixel);
-
-    // Set the input position just after end of image
-    Seek(Handle, StartPos + Cardinal(cio.bp) - Cardinal(cio.start), smFromBeginning);
+    // Convert YCbCr to RGB if needed
+    if (Image.color_space = OPJ_CLRSPC_SYCC) and (Info.ChannelCount in [3, 4]) then
+      ConvertYCbCrToRGB(Images[0].Bits, Images[0].Width * Images[0].Height, Info.BytesPerPixel);
 
     Result := True;
   finally
-    opj_image_destroy(image);
-    opj_destroy_decompress(dinfo);
-    opj_cio_close(cio);
-    FreeMem(Buffer);
+    if Image <> nil then
+      opj_image_destroy(Image);
+    if Stream <> nil then
+      opj_stream_destroy(Stream);
+    if Codec <> nil then
+      opj_destroy_codec(Codec);
   end;
 end;
 
@@ -438,101 +484,88 @@ var
   Info: TImageFormatInfo;
   I, Z, InvZ, Channel, ChannelSize, NumPixels: Integer;
   Pix: PByte;
-  image: popj_image_t;
-  cio: popj_cio_t;
-  cinfo: popj_cinfo_t;
-  parameters: opj_cparameters_t;
-  compparams: popj_image_cmptparm_array;
+  Image: popj_image_t;
+  Stream: opj_stream_t;
+  Codec: opj_codec_t;
+  Parameters: opj_cparameters_t;
+  CompParams: array of opj_image_cmptparm_t;
   ColorSpace: OPJ_COLOR_SPACE;
-
-  function GetComponentType(Comp: Integer): OPJ_COMPONENT_TYPE;
-  begin
-     if Info.HasAlphaChannel and (Comp = Info.ChannelCount - 1) then
-       Result := COMPTYPE_OPACITY
-     else if Info.HasGrayChannel then
-       Result := COMPTYPE_Y
-     else if Comp = 2 then
-       Result := COMPTYPE_B
-     else if Comp = 1 then
-       Result := COMPTYPE_G
-     else if Comp = 0 then
-       Result := COMPTYPE_R
-     else
-       Result := COMPTYPE_UNKNOWN;
-  end;
-
+  Wrapper: TStreamWrapper;
 begin
   Result := False;
-  image := nil;
-  compparams := nil;
-  cinfo := nil;
-  cio := nil;
-  // Makes image to save compatible with Jpeg 2000 saving capabilities
+  Image := nil;
+  Stream := nil;
+  Codec := nil;
+
   if MakeCompatible(Images[Index], ImageToSave, MustBeFreed) then
-  with GetIO, ImageToSave do
   try
-    Info := GetFormatInfo(Format);
+    Info := GetFormatInfo(ImageToSave.Format);
     ChannelSize := Info.BytesPerPixel div Info.ChannelCount;
 
-    // Fill component info structures and then create OpenJPEG image
-    GetMem(compparams, Info.ChannelCount * SizeOf(opj_image_comptparm));
+    // Fill component parameters
+    SetLength(CompParams, Info.ChannelCount);
     for I := 0 to Info.ChannelCount - 1 do
-    with compparams[I] do
     begin
-      dx := 1;
-      dy := 1;
-      w  := Width;
-      h  := Height;
-      prec := (Info.BytesPerPixel div Info.ChannelCount) * 8;
-      bpp := prec;
-      sgnd := 0;
-      comp_type := GetComponentType(I);
-      x0 := 0;
-      y0 := 0;
+      CompParams[I].dx := 1;
+      CompParams[I].dy := 1;
+      CompParams[I].w := ImageToSave.Width;
+      CompParams[I].h := ImageToSave.Height;
+      CompParams[I].prec := ChannelSize * 8;
+      CompParams[I].bpp := CompParams[I].prec;
+      CompParams[I].sgnd := 0;
+      CompParams[I].x0 := 0;
+      CompParams[I].y0 := 0;
     end;
 
     if Info.HasGrayChannel then
-      ColorSpace := CLRSPC_GRAY
+      ColorSpace := OPJ_CLRSPC_GRAY
     else
-      ColorSpace := CLRSPC_SRGB;
+      ColorSpace := OPJ_CLRSPC_SRGB;
 
-    image := opj_image_create(Info.ChannelCount, @compparams[0], ColorSpace);
-    if image = nil then Exit;
-    image.x1 := Width;
-    image.y1 := Height;
+    Image := opj_image_create(Info.ChannelCount, @CompParams[0], ColorSpace);
+    if Image = nil then
+      Exit;
 
+    Image.x0 := 0;
+    Image.y0 := 0;
+    Image.x1 := ImageToSave.Width;
+    Image.y1 := ImageToSave.Height;
+
+    // Mark alpha channel
+    if Info.HasAlphaChannel then
+      Image.comps[Info.ChannelCount - 1].alpha := 1;
+
+    // Create codec
     if FCodeStreamOnly then
-      cinfo := opj_create_compress(CODEC_J2K)
+      Codec := opj_create_compress(OPJ_CODEC_J2K)
     else
-      cinfo := opj_create_compress(CODEC_JP2);
+      Codec := opj_create_compress(OPJ_CODEC_JP2);
 
-    // Set event manager to nil to avoid getting messages
-    cinfo.event_mgr := nil;  
-    // Set compression parameters based current file format properties
-    opj_set_default_encoder_parameters(@parameters);
-    parameters.cod_format := Iff(FCodeStreamOnly, 0, 1);
-    parameters.numresolution := 6;
-    parameters.tcp_numlayers := 1;
-    parameters.cp_disto_alloc := 1;
+    if Codec = nil then
+      Exit;
+
+    // Set compression parameters
+    opj_set_default_encoder_parameters(@Parameters);
+    Parameters.numresolution := 6;
+    Parameters.tcp_numlayers := 1;
+    Parameters.cp_disto_alloc := 1;
+
     if FLosslessCompression then
     begin
-      // Set rate to 0 -> lossless
-      parameters.tcp_rates[0] := 0;
+      Parameters.tcp_rates[0] := 0;
     end
     else
     begin
-      // Quality -> Rate computation taken from ImageMagick
       Rate := 100.0 / Sqr(115 - FQuality);
-      NumPixels := Width * Height * Info.BytesPerPixel;
+      NumPixels := ImageToSave.Width * ImageToSave.Height * Info.BytesPerPixel;
       TargetSize := (NumPixels * Rate) + 550 + (Info.ChannelCount - 1) * 142;
-      parameters.tcp_rates[0] := 1.0 / (TargetSize / NumPixels);
+      Parameters.tcp_rates[0] := 1.0 / (TargetSize / NumPixels);
     end;
-    // Setup encoder
-    opj_setup_encoder(cinfo, @parameters, image);
 
-    // Fill component samples in data with values taken from
-    // image pixels.
-    // Components should be ordered like this: RGBA, YA, RGB, etc.
+    if not opj_setup_encoder(Codec, @Parameters, Image) then
+      Exit;
+
+    // Fill component data
     for Channel := 0 to Info.ChannelCount - 1 do
     begin
       Z := Channel;
@@ -544,34 +577,54 @@ begin
         else
           InvZ := Info.ChannelCount - 2 - Z;
       end;
-      Pix := @PByteArray(Bits)[InvZ * ChannelSize];
-      for I := 0 to Width * Height - 1 do
+      Pix := @PByteArray(ImageToSave.Bits)[InvZ * ChannelSize];
+      for I := 0 to ImageToSave.Width * ImageToSave.Height - 1 do
       begin
         case ChannelSize of
-          1: image.comps[Z].data[I] := Pix^;
-          2: image.comps[Z].data[I] := PWord(Pix)^;
-          4: UInt32(image.comps[Z].data[I]) := PUInt32(Pix)^;
+          1: Image.comps[Z].data[I] := Pix^;
+          2: Image.comps[Z].data[I] := PWord(Pix)^;
+          4: OPJ_UINT32(Image.comps[Z].data[I]) := PUInt32(Pix)^;
         end;
         Inc(Pix, Info.BytesPerPixel);
       end;
     end;
 
-    // Open OpenJPEG output
-    cio := opj_cio_open(opj_common_ptr(cinfo), nil, 0);
-    // Try to encode the image
-    if not opj_encode(cinfo, cio, image, nil) then
+    // Setup stream wrapper for writing
+    Wrapper.IO := GetIO;
+    Wrapper.Handle := Handle;
+    Wrapper.StartPos := Wrapper.IO.Tell(Handle);
+    Wrapper.Size := 0;
+
+    // Create output stream
+    Stream := opj_stream_create(OPJ_J2K_STREAM_CHUNK_SIZE, OPJ_FALSE);
+    if Stream = nil then
       Exit;
-    // Finally write buffer with encoded image to output
-    Write(Handle, cio.buffer, cio_tell(cio));
+
+    opj_stream_set_write_function(Stream, @StreamWrite);
+    opj_stream_set_skip_function(Stream, @StreamSkip);
+    opj_stream_set_seek_function(Stream, @StreamSeek);
+    opj_stream_set_user_data(Stream, @Wrapper, nil);
+
+    // Encode
+    if not opj_start_compress(Codec, Image, Stream) then
+      Exit;
+
+    if not opj_encode(Codec, Stream) then
+      Exit;
+
+    if not opj_end_compress(Codec, Stream) then
+      Exit;
 
     Result := True;
   finally
     if MustBeFreed then
       FreeImage(ImageToSave);
-    opj_destroy_compress(cinfo);
-    opj_image_destroy(image);
-    opj_cio_close(cio);
-    FreeMem(compparams);
+    if Image <> nil then
+      opj_image_destroy(Image);
+    if Stream <> nil then
+      opj_stream_destroy(Stream);
+    if Codec <> nil then
+      opj_destroy_codec(Codec);
   end;
 end;
 
@@ -602,18 +655,21 @@ begin
 end;
 
 initialization
-  RegisterImageFileFormat(TJpeg2000FileFormat);
-
-{$ELSE}
-implementation
-begin
-{$IFEND}
+  // Only register the format if the dynamic library loads successfully
+  if LoadOpenJpegLibrary then
+    RegisterImageFileFormat(TJpeg2000FileFormat);
 
 {
   File Notes:
 
  -- TODOS ----------------------------------------------------
     - nothing now
+
+  -- 0.80 Changes ---------------------------------------------
+    - Migrated to OpenJPEG 2.x API with dynamic library loading
+    - Removed platform restrictions - now works on all platforms
+      where OpenJPEG 2.x library is available
+    - Removed static object file linking
 
   -- 0.27 Changes ---------------------------------------------
     - by Hanno Hugenberg <hanno.hugenberg@pergamonmed.com>

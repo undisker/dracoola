@@ -1,5 +1,5 @@
 {
-  Vampyre Imaging Library Demo
+  Dracoola Imaging Library Demo
   Image Browser (class api, canvas, VCL/LCL interaction)
 
   This simple viewer application shows usage of high level class interface
@@ -41,10 +41,10 @@ uses
 {$ENDIF}
   Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, ComCtrls, ShellCtrls, ExtCtrls, StdCtrls, Buttons, ExtDlgs,
+  BGRABitmap, BGRABitmapTypes,
   ImagingTypes,
   Imaging,
   ImagingClasses,
-  ImagingComponents,
   ImagingColors,
   ImagingCanvases,
   ImagingFormats,
@@ -99,6 +99,8 @@ type
     FBack: ImagingClasses.TSingleImage;
     // Canvas for background image
     FBackCanvas: ImagingCanvases.TImagingCanvas;
+    // BGRABitmap for display
+    FBGRABitmap: TBGRABitmap;
     FFileName: string;
     FLastTime: LongInt;
     FOriginalFormats: array of TImageFormat;
@@ -140,6 +142,7 @@ begin
   FImageCanvas := TImagingCanvas.Create;
   FBack := TSingleImage.CreateFromParams(128, 128, ifA8R8G8B8);
   FBackCanvas := FindBestCanvasForImage(FBack).CreateForImage(FBack);
+  FBGRABitmap := TBGRABitmap.Create(1, 1);
   SetUnsupported;
 {$IFDEF FPC}
   Tree.OnGetImageIndex := TreeGetImageIndex;
@@ -153,6 +156,7 @@ begin
   FImageCanvas.Free;
   FBack.Free;
   FBackCanvas.Free;
+  FBGRABitmap.Free;
 end;
 
 procedure TMainForm.LoadFile;
@@ -369,6 +373,9 @@ procedure TMainForm.PaintBoxPaint(Sender: TObject);
 var
   R: TRect;
   Filter: TResizeFilter;
+  X, Y: Integer;
+  SrcPtr: PColor32Rec;
+  DstPtr: PBGRAPixel;
 begin
   // Fill background with default color
   FillDefault;
@@ -386,11 +393,26 @@ begin
   // Stretch image over background canvas
   FImageCanvas.StretchDrawAlpha(FImage.BoundsRect, FBackCanvas, R, Filter);
 
-  // Draw image to canvas (without conversion) using OS drawing functions.
-  // Note that DisplayImage only supports images in ifA8R8G8B8 format so
-  // if you have image in different format you must convert it or
-  // create standard TBitmap by calling ImagingComponents.ConvertImageToBitmap
-  ImagingComponents.DisplayImage(PaintBox.Canvas, PaintBox.BoundsRect, FBack);
+  // Convert FBack (ifA8R8G8B8) to BGRABitmap for display
+  FBGRABitmap.SetSize(FBack.Width, FBack.Height);
+  SrcPtr := PColor32Rec(FBack.ImageDataPointer^.Bits);
+  for Y := 0 to FBack.Height - 1 do
+  begin
+    DstPtr := FBGRABitmap.ScanLine[Y];
+    for X := 0 to FBack.Width - 1 do
+    begin
+      DstPtr^.blue := SrcPtr^.B;
+      DstPtr^.green := SrcPtr^.G;
+      DstPtr^.red := SrcPtr^.R;
+      DstPtr^.alpha := SrcPtr^.A;
+      Inc(SrcPtr);
+      Inc(DstPtr);
+    end;
+  end;
+  FBGRABitmap.InvalidateBitmap;
+
+  // Draw BGRABitmap to canvas
+  FBGRABitmap.Draw(PaintBox.Canvas, PaintBox.BoundsRect);
 end;
 
 procedure TMainForm.FillDefault;

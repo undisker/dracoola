@@ -1,5 +1,5 @@
 {
-  Vampyre Imaging Library Demo
+  Dracoola Imaging Library Demo
   SDL Demo (SDL extension)
 
   Demo that shows how to create SDL surfaces from Imaging's
@@ -15,7 +15,7 @@
 unit DemoUnit;
 
 {$I ImagingOptions.inc}
-{$R ..\Common\MainIcon.res}
+{.$R ..\Common\MainIcon.res}  // Resource file not available
 
 interface
 
@@ -43,7 +43,7 @@ const
   SSpriteImageFile = 'Vezyr.png';
   SOutScreenFile = 'SDLScreen.png';
   SOutSpriteFile = 'SDLSprite.png';
-  SWindowTitle = 'Vampyre Imaging Library (version: %s) SDL Demo';
+  SWindowTitle = 'Dracoola Imaging Library (version: %s) SDL Demo';
   SWindowIconTitle = 'SDL Demo';
 
 var
@@ -186,7 +186,7 @@ end;
 
 procedure RunDemo;
 begin
-  MessageOut('Vampyre Imaging Library Demo - SDL (version %s)' + sLineBreak +
+  MessageOut('Dracoola Imaging Library Demo - SDL (version %s)' + sLineBreak +
     'written by Marek Mauder' + sLineBreak, [Imaging.GetVersionStr]);
   MessageOut('Keys (when SDL window has focus): ' + sLineBreak +
     '  SPACE - cycle image data formats' + sLineBreak +

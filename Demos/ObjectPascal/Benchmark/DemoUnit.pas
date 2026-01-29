@@ -1,5 +1,5 @@
 {
-  Vampyre Imaging Library Demo
+  Dracoola Imaging Library Demo
   Benchmark (core low level API)
 
   Simple program which measures time taken by the main Imaging functions
@@ -317,7 +317,7 @@ end;
 
 procedure RunDemo;
 begin
-  WriteLn('Vampyre Imaging Library Benchmark Demo version ', Imaging.GetVersionStr);
+  WriteLn('Dracoola Imaging Library Benchmark Demo version ', Imaging.GetVersionStr);
   WriteLn;
 
 {$IFDEF LOG_TO_FILE}

@@ -1,5 +1,5 @@
 {
-  Vampyre Imaging Library
+  Dracoola Imaging Library
   by Marek Mauder
   https://github.com/galfar/imaginglib
   https://imaginglib.sourceforge.io
@@ -17,9 +17,11 @@ unit ImagingTypes;
 interface
 
 const
-  { Current Major version of Imaging.}
+  { Version in year.month format }
+  ImagingVersionYear = 2025;
+  ImagingVersionMonth = 1;
+  { Legacy version constants for backward compatibility }
   ImagingVersionMajor = 0;
-  { Current Minor version of Imaging.}
   ImagingVersionMinor = 82;
 
   { Imaging Option Ids whose values can be set/get by SetOption/
@@ -187,31 +189,6 @@ const
   ChannelAlpha = 3;
 
 type
-{$IFDEF DCC}
-  {$IF CompilerVersion <= 18.5}
-    PtrUInt = Cardinal;
-    PtrInt = Integer;
-    { Some new Delphi platforms (64bit POSIX) have 64bit LongInt/LongWord so rather use
-      Int32/UInt32 where you really want 32bits.
-      FPC has LongInt always 32 bit. }
-    Int32 = Integer;
-    UInt32 = Cardinal;
-    Int16 = SmallInt;
-    { In Delphi 7-2007 NativeInt is incorrectly defined to have size of 8 bytes,
-      redeclare it correctly. }
-    NativeInt = Integer;
-    NativeUInt = Cardinal;
-  {$ELSE}
-    PtrUInt = NativeUInt;
-    PtrInt = NativeInt;
-  {$IFEND}
-  { Not sure which Delphi version defined these (e.g. XE3 has UInt32 but not PUInt32). }
-  {$IF not Defined(PInt32) or not Defined(PUInt32)}
-    PInt32 = ^Int32;
-    PUInt32 = ^UInt32;
-  {$IFEND}
-{$ENDIF}
-
   { Enum defining image data format. In formats with more channels,
     first channel after "if" is stored in the most significant bits and channel
     before end is stored in the least significant.}
@@ -497,13 +474,8 @@ type
   );
 
   { IO functions used for reading and writing images from/to input/output.}
-
-{$IFDEF DELPHI}
-  TIOReadWriteCount = NativeInt;
-{$ELSE}
   // FPC 3.2.2 still has only TStream with Read/Write count as LongInt
   TIOReadWriteCount = LongInt;
-{$ENDIF}
 
   TOpenProc = function(Source: PChar; Mode: TOpenMode): TImagingHandle; cdecl;
   TCloseProc = procedure(Handle: TImagingHandle); cdecl;

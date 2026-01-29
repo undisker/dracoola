@@ -1,5 +1,5 @@
 {
-  Vampyre Imaging Library Demo
+  Dracoola Imaging Library Demo
   OpenGL Demo (OpenGL extension)
 
   Demo that shows how to create OpenGL textures from files
@@ -18,7 +18,7 @@ unit DemoUnit;
 {$DEFINE USE_DGL_HEADERS}
 
 {$I ImagingOptions.inc}
-{$R ..\Common\MainIcon.res}
+{.$R ..\Common\MainIcon.res}  // Resource file not available
 
 interface
 
@@ -47,7 +47,7 @@ uses
   DemoUtils;
 
 const
-  SWindowTitle = 'Vampyre Imaging Library (%s) - OpenGL Demo (format: %s)';
+  SWindowTitle = 'Dracoola Imaging Library (%s) - OpenGL Demo (format: %s)';
   SWindowIconTitle = 'OpenGL Demo';
   SBackImageFile = 'Tigers.jng';
   SSpriteImageFile = 'Vezyr.png';

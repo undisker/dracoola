@@ -3,7 +3,7 @@ object MainForm: TMainForm
   Height = 791
   Top = 283
   Width = 1026
-  Caption = 'Image Browser - Vampyre Imaging Library Demo'
+  Caption = 'Image Browser - Dracoola Imaging Library Demo'
   ClientHeight = 791
   ClientWidth = 1026
   Color = clWindow

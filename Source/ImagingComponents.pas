@@ -1,5 +1,5 @@
 {
-  Vampyre Imaging Library
+  Dracoola Imaging Library
   by Marek Mauder
   https://github.com/galfar/imaginglib
   https://imaginglib.sourceforge.io
@@ -17,14 +17,13 @@ unit ImagingComponents;
 
 interface
 
-{$IF Defined(FPC) and Defined(LCL)}
+{ LCL-only version for FreePascal }
+{$IFDEF LCL}
   {$DEFINE COMPONENT_SET_LCL}
-{$ELSEIF Defined(DELPHI)}
-  {$DEFINE COMPONENT_SET_VCL}
-{$IFEND}
+{$ENDIF}
 
-{$IF not Defined(COMPONENT_SET_LCL) and not Defined(COMPONENT_SET_VCL)}
-// If no component sets should be used just include empty unit.
+{$IFNDEF COMPONENT_SET_LCL}
+// If LCL is not available, include empty unit.
 implementation
 {$ELSE}
 
@@ -33,15 +32,10 @@ uses
   Windows,
 {$ENDIF}
   SysUtils, Types, Classes,
-{$IFDEF COMPONENT_SET_VCL}
-  Graphics,
-{$ENDIF}
-{$IFDEF COMPONENT_SET_LCL}
   GraphType,
   Graphics,
   LCLType,
   LCLIntf,
-{$ENDIF}
   ImagingTypes, Imaging, ImagingClasses;
 
 type
@@ -90,14 +84,12 @@ type
     { Copies the current image to TImageData structure.}
     procedure AssignToImageData(var ImageData: TImageData);
 
-  {$IFDEF COMPONENT_SET_LCL}
     { Needed for TGraphic.LoadFromResourceName() to work.
       We return RT_RCDATA here. Also for TImagingBitmap since
       RT_BITMAP is stored differently than bitmap on disk (no BITMAPFILEHEADER).}
     function GetResourceType: TResourceType; override;
     { Used by TPicture.LoadFromStream to find the right TGraphic class for streams. }
     class function IsStreamFormatSupported(Stream: TStream): boolean; override;
-  {$ENDIF}
   end;
 
   TImagingGraphicClass = class of TImagingGraphic;
@@ -123,12 +115,10 @@ type
     procedure SaveToStream(Stream: TStream); override;
     { Returns TImageFileFormat descendant for this graphic class.}
     class function GetFileFormat: TImageFileFormat; virtual; abstract;
-  {$IFDEF COMPONENT_SET_LCL}
     { Returns file extensions of this graphic class.}
     class function GetFileExtensions: string; override;
     { Returns default MIME type of this graphic class.}
     function GetMimeType: string; override;
-  {$ENDIF}
     { Default (the most common) file extension of this graphic class.}
     property DefaultFileExt: string read FDefaultFileExt;
   end;
@@ -162,9 +152,7 @@ type
     constructor Create; override;
     procedure SaveToStream(Stream: TStream); override;
     class function GetFileFormat: TImageFileFormat; override;
-  {$IFDEF COMPONENT_SET_LCL}
     function GetMimeType: string; override;
-  {$ENDIF}
     { See ImagingJpegQuality option for details.}
     property Quality: LongInt read FQuality write FQuality;
     { See ImagingJpegProgressive option for details.}
@@ -243,9 +231,7 @@ type
     constructor Create; override;
     procedure SaveToStream(Stream: TStream); override;
     class function GetFileFormat: TImageFileFormat; override;
-  {$IFDEF COMPONENT_SET_LCL}
     function GetMimeType: string; override;
-  {$ENDIF}
     { See ImagingMNGLossyCompression option for details.}
     property LossyCompression: Boolean read FLossyCompression write FLossyCompression;
     { See ImagingMNGLossyAlpha option for details.}
@@ -496,11 +482,6 @@ end;
 function DataFormatToPixelFormat(Format: TImageFormat): TPixelFormat;
 begin
   case Format of
-{$IFDEF COMPONENT_SET_VCL}
-    ifIndex8: Result := pf8bit;
-    ifR5G6B5: Result := pf16bit;
-    ifR8G8B8: Result := pf24bit;
-{$ENDIF}
     ifA8R8G8B8,
     ifX8R8G8B8: Result := pf32bit;
   else
@@ -526,14 +507,8 @@ var
   PF: TPixelFormat;
   Info: TImageFormatInfo;
   WorkData: TImageData;
-{$IFDEF COMPONENT_SET_VCL}
-  I, LineBytes: LongInt;
-  LogPalette: TMaxLogPalette;
-{$ENDIF}
-{$IFDEF COMPONENT_SET_LCL}
   RawImage: TRawImage;
   ImgHandle, ImgMaskHandle: HBitmap;
-{$ENDIF}
 begin
   PF := DataFormatToPixelFormat(Data.Format);
   GetImageFormatInfo(Data.Format, Info);
@@ -553,18 +528,7 @@ begin
     if Info.IsFloatingPoint or Info.HasAlphaChannel or Info.IsSpecial then
       Imaging.ConvertImage(WorkData, ifA8R8G8B8)
     else
-    begin
-{$IFDEF COMPONENT_SET_VCL}
-      if Info.IsIndexed or Info.HasGrayChannel then
-        Imaging.ConvertImage(WorkData, ifIndex8)
-      else if Info.UsePixelFormat then
-        Imaging.ConvertImage(WorkData, ifR5G6B5)
-      else
-        Imaging.ConvertImage(WorkData, ifR8G8B8);
-{$ELSE}
-        Imaging.ConvertImage(WorkData, ifA8R8G8B8);
-{$ENDIF}
-    end;
+      Imaging.ConvertImage(WorkData, ifA8R8G8B8);
 
     PF := DataFormatToPixelFormat(WorkData.Format);
     GetImageFormatInfo(WorkData.Format, Info);
@@ -575,41 +539,7 @@ begin
   if PF = pfCustom then
     RaiseImaging(SBadFormatDataToBitmap, [ImageToStr(WorkData)]);
 
-{$IFDEF COMPONENT_SET_VCL}
-  Bitmap.Width := WorkData.Width;
-  Bitmap.Height := WorkData.Height;
-  Bitmap.PixelFormat := PF;
-
-  if (PF = pf8bit) and (WorkData.Palette <> nil) then
-  begin
-    // Copy palette, this must be done before copying bits
-    FillChar(LogPalette, SizeOf(LogPalette), 0);
-    LogPalette.palVersion := $300;
-    LogPalette.palNumEntries := Info.PaletteEntries;
-    for I := 0 to Info.PaletteEntries - 1 do
-    with LogPalette do
-    begin
-      palPalEntry[I].peRed := WorkData.Palette[I].R;
-      palPalEntry[I].peGreen := WorkData.Palette[I].G;
-      palPalEntry[I].peBlue := WorkData.Palette[I].B;
-    end;
-    Bitmap.Palette := CreatePalette(PLogPalette(@LogPalette)^);
-  end;
-
-  // Copy scanlines
-    LineBytes := WorkData.Width * Info.BytesPerPixel;
-  for I := 0 to WorkData.Height - 1 do
-    Move(PByteArray(WorkData.Bits)[I * LineBytes], Bitmap.Scanline[I]^, LineBytes);
-
-  // Delphi 2009 and newer support alpha transparency for TBitmap
-{$IF Defined(DELPHI) and (CompilerVersion >= 20.0)}
-  if Bitmap.PixelFormat = pf32bit then
-    Bitmap.AlphaFormat := afDefined;
-{$IFEND}
-{$ENDIF}
-
-{$IFDEF COMPONENT_SET_LCL}
-  // Create 32bit raw image from image data
+  // Create 32bit raw image from image data (LCL)
   FillChar(RawImage, SizeOf(RawImage), 0);
   with RawImage.Description do
   begin
@@ -640,7 +570,6 @@ begin
     Bitmap.Handle := ImgHandle;
     Bitmap.MaskHandle := ImgMaskHandle;
   end;
-{$ENDIF}
   if WorkData.Bits <> Data.Bits then
     Imaging.FreeImage(WorkData);
 end;
@@ -650,24 +579,12 @@ var
   I, LineBytes: LongInt;
   Format: TImageFormat;
   Info: TImageFormatInfo;
-{$IFDEF COMPONENT_SET_VCL}
-  Colors: Word;
-  LogPalette: TMaxLogPalette;
-{$ENDIF}
-{$IFDEF COMPONENT_SET_LCL}
   RawImage: TRawImage;
   LineLazBytes: LongInt;
-{$ENDIF}
 begin
   Format := ifUnknown;
-{$IFDEF COMPONENT_SET_LCL}
-  // In the current Lazarus 0.9.10 Bitmap.PixelFormat property is useless.
-  // We cannot change bitmap's format by changing it (it will just release
-  // old image but not convert it to new format) nor we can determine bitmaps's
-  // current format (it is usually set to pfDevice). So bitmap's format is obtained
-  // trough RawImage api and cannot be changed to mirror some Imaging format
-  // (so formats with no corresponding Imaging format cannot be saved now).
-
+  // In Lazarus Bitmap.PixelFormat property is unreliable.
+  // Bitmap's format is obtained through RawImage API.
   if RawImage_DescriptionFromBitmap(Bitmap.Handle, RawImage.Description) then
     case RawImage.Description.BitsPerPixel of
       8: Format := ifIndex8;
@@ -681,18 +598,6 @@ begin
       48: Format := ifR16G16B16;
       64: Format := ifA16R16G16B16;
     end;
-{$ELSE}
-  Format := PixelFormatToDataFormat(Bitmap.PixelFormat);
-  if Format = ifUnknown then
-  begin
-    // Convert from formats not supported by Imaging (1/4 bit)
-    if Bitmap.PixelFormat < pf8bit then
-       Bitmap.PixelFormat := pf8bit
-    else
-      Bitmap.PixelFormat := pf32bit;
-    Format := PixelFormatToDataFormat(Bitmap.PixelFormat);
-  end;
-{$ENDIF}
 
   if Format = ifUnknown then
     RaiseImaging(SBadFormatBitmapToData, []);
@@ -701,28 +606,6 @@ begin
   GetImageFormatInfo(Data.Format, Info);
   LineBytes := Data.Width * Info.BytesPerPixel;
 
-{$IFDEF COMPONENT_SET_VCL}
-  if (Format = ifIndex8) and (GetObject(Bitmap.Palette, SizeOf(Colors),
-    @Colors) <> 0) then
-  begin
-    // Copy palette
-    GetPaletteEntries(Bitmap.Palette, 0, Colors, LogPalette.palPalEntry);
-    if Colors > Info.PaletteEntries  then
-      Colors := Info.PaletteEntries;
-    for I := 0 to Colors - 1 do
-    with LogPalette do
-    begin
-      Data.Palette[I].A := $FF;
-      Data.Palette[I].R := palPalEntry[I].peRed;
-      Data.Palette[I].G := palPalEntry[I].peGreen;
-      Data.Palette[I].B := palPalEntry[I].peBlue;
-    end;
-  end;
-  // Copy scanlines
-  for I := 0 to Data.Height - 1 do
-    Move(Bitmap.ScanLine[I]^, PByteArray(Data.Bits)[I * LineBytes], LineBytes);
-{$ENDIF}
-{$IFDEF COMPONENT_SET_LCL}
   // Get raw image from bitmap (mask handle must be 0 or expect violations)
   if RawImage_FromBitmap(RawImage, Bitmap.Handle, 0, nil) then
   begin
@@ -740,7 +623,6 @@ begin
 
     RawImage.FreeData;
   end;
-{$ENDIF}
 end;
 
 procedure ConvertImageToBitmap(Image: TBaseImage; Bitmap: TBitmap);
@@ -811,7 +693,7 @@ begin
 end;
 
 procedure DisplayImageData(DstCanvas: TCanvas; const DstRect: TRect; const ImageData: TImageData; const SrcRect: TRect);
-{$IF Defined(DCC) or Defined(LCLWIN32)} // Delphi or LCL Win32
+{$IF Defined(LCLWIN32)} // LCL Win32
 begin
   DisplayImageDataOnDC(DstCanvas.Handle, DstRect, ImageData, SrcRect);
 end;
@@ -1030,7 +912,6 @@ begin
     inherited AssignTo(Dest);
 end;
 
-{$IFDEF COMPONENT_SET_LCL}
 function TImagingGraphic.GetResourceType: TResourceType;
 begin
   Result := RT_RCDATA;
@@ -1040,7 +921,6 @@ class function TImagingGraphic.IsStreamFormatSupported(Stream: TStream): Boolean
 begin
   Result := DetermineStreamFormat(Stream) <> '';
 end;
-{$ENDIF}
 
 procedure TImagingGraphic.Assign(Source: TPersistent);
 begin
@@ -1107,7 +987,6 @@ begin
   end;
 end;
 
-{$IFDEF COMPONENT_SET_LCL}
 class function TImagingGraphicForSave.GetFileExtensions: string;
 begin
   Result := StringReplace(GetFileFormat.Extensions.CommaText, ',', ';', [rfReplaceAll]);
@@ -1117,7 +996,6 @@ function TImagingGraphicForSave.GetMimeType: string;
 begin
   Result := 'image/' + FDefaultFileExt;
 end;
-{$ENDIF}
 
 {$IFNDEF DONT_LINK_BITMAP}
 constructor TImagingBitmap.Create;
@@ -1153,12 +1031,10 @@ begin
   Result := FindImageFileFormatByClass(TJpegFileFormat);
 end;
 
-{$IFDEF COMPONENT_SET_LCL}
 function TImagingJpeg.GetMimeType: string;
 begin
   Result := 'image/jpeg';
 end;
-{$ENDIF}
 
 procedure TImagingJpeg.SaveToStream(Stream: TStream);
 begin
@@ -1269,12 +1145,10 @@ begin
   Result := FindImageFileFormatByClass(TMNGFileFormat);
 end;
 
-{$IFDEF COMPONENT_SET_LCL}
 function TImagingMNG.GetMimeType: string;
 begin
   Result := 'video/mng';
 end;
-{$ENDIF}
 
 procedure TImagingMNG.SaveToStream(Stream: TStream);
 begin
@@ -1326,7 +1200,7 @@ finalization
   UnRegisterTypes;
   RegisteredFormats.Free;
 
-{$IFEND} // {$IF not Defined(COMPONENT_SET_LCL) and not Defined(COMPONENT_SET_VCL)}
+{$ENDIF} // {$IFNDEF COMPONENT_SET_LCL}
 
 {
   File Notes:

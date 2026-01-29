@@ -6,12 +6,12 @@ echo
 source ./Common.sh
 
 DEFINES="-dFULL_FEATURE_SET"
-UNITS="-Fu$ROOTDIR/Source -Fu$ROOTDIR/Source/JpegLib -Fu$ROOTDIR/Source/ZLib
+UNITS="-Fu$ROOTDIR/Source -Fu$ROOTDIR/Source/JpegTurbo -Fu$ROOTDIR/Source/ZLib
   -Fu$ROOTDIR/Extensions -Fu$ROOTDIR/Extensions/LibTiff -Fu$DEMOPATH/Common"
 
 DEMOCOUNT=2
 
-buildDemo "Benchmark/Bench.dpr" 
-buildDemo "VampConvert/VampConvert.dpr" 
+buildDemo "Benchmark/Bench.lpr"
+buildDemo "DracoolaConvert/DracoolaConvert.lpr" 
 
 printResult

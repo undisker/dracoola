@@ -1,7 +1,7 @@
 object MainForm: TMainForm
   Left = 167
   Top = 103
-  Caption = 'VCL Image Browser - Vampyre Imaging Library Demo'
+  Caption = 'VCL Image Browser - Dracoola Imaging Library Demo'
   ClientHeight = 791
   ClientWidth = 1026
   Color = clWhite

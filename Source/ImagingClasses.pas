@@ -1,5 +1,5 @@
 {
-  Vampyre Imaging Library
+  Dracoola Imaging Library
   by Marek Mauder
   https://github.com/galfar/imaginglib
   https://imaginglib.sourceforge.io
@@ -981,7 +981,8 @@ procedure TMultiImage.ReverseImages;
 var
   I: Integer;
 begin
-  for I := 0 to GetImageCount div 2 do
+  // Fix: use (GetImageCount - 1) div 2 to avoid swapping middle elements twice
+  for I := 0 to (GetImageCount - 1) div 2 do
     ExchangeImages(I, GetImageCount - 1 - I);
 end;
 

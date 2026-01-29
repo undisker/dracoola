@@ -1,81 +1,39 @@
 {*******************************************************}
 {                                                       }
-{       Delphi Supplemental Components                  }
 {       ZLIB Data Compression Interface Unit            }
-{                                                       }
-{       Copyright (c) 1997 Borland International        }
-{       Copyright (c) 1998 Jacques Nomssi Nzali         }
+{       Modified for Dracoola Imaging Library            }
+{       FreePascal-only fork with zlib-ng support       }
 {                                                       }
 {*******************************************************}
 
 {
-  Modified for 
-  Vampyre Imaging Library
-  by Marek Mauder 
-  http://imaginglib.sourceforge.net
+  This unit provides zlib compression/decompression functionality.
 
-  You can choose which pascal zlib implementation will be
-  used. IMPASZLIB and FPCPASZLIB are translations of zlib
-  to pascal so they don't need any *.obj files.
-  The others are interfaces to *.obj files (Windows) or
-  *.so libraries (Linux).
-    Default implementation is IMPASZLIB because it can be compiled
-  by all supported compilers and works on all supported platforms.
-    FPCPASZLIB is useful for Lazarus applications. FPC's zlib is linked
-  to exe by default so there is no need to link additional (and almost identical)
-  IMPASZLIB.
-
-  There is a small speed comparison table of some of the
-  supported implementations (TGA image 28 311 570 bytes, compression level = 6,
-  Delphi 9, Win32, Athlon XP 1900).
-
-                 ZLib version Decompression  Compression   Comp. Size
-  IMPASZLIB     |   1.1.2   |    824 ms    |  4 280 ms  |  18 760 133 B
-  ZLIBEX        |   1.2.2   |    710 ms    |  1 590 ms* |  19 056 621 B
-  DELPHIZLIB    |   1.0.4   |    976 ms    |  9 190 ms  |  18 365 562 B
-  ZLIBPAS       |   1.2.3   |    680 ms    |  3 790  ms |  18 365 387 B
-    * obj files are compiled with compression level hardcoded to 1 (fastest)
+  Implementation options:
+  - ZLIBNG_EXTERNAL: Use external zlib-ng/zlib library (default, fastest)
+  - FPCPASZLIB: Use FPC's built-in paszlib (fallback)
 }
 
 unit dzlib;
 
-{$I ImagingOptions.inc}
+{$I ..\ImagingOptions.inc}
 
 interface
 
-{$DEFINE IMPASZLIB}
-{ $DEFINE ZLIBPAS}
+{ Default: Use external zlib-ng/zlib library for best performance.
+  Define FPCPASZLIB to use FPC's built-in paszlib as fallback. }
+{$DEFINE ZLIBNG_EXTERNAL}
 { $DEFINE FPCPASZLIB}
-{ $DEFINE ZLIBEX}
-{ $DEFINE DELPHIZLIB}
-
-{ Automatically use FPC's PasZLib when compiling with FPC.}
-
-{$IFDEF FPC}
-  {$UNDEF IMPASZLIB}
-  {$DEFINE FPCPASZLIB}
-{$ENDIF}
 
 uses
-{$IF Defined(IMPASZLIB)}
-  { Use paszlib modified by me for Delphi and FPC }
-  imzdeflate, imzinflate, impaszlib,
+{$IF Defined(ZLIBNG_EXTERNAL)}
+  zlibng_bindings,
 {$ELSEIF Defined(FPCPASZLIB)}
-  { Use FPC's paszlib }
   zbase, paszlib,
-{$ELSEIF Defined(ZLIBPAS)}
-  { Pascal interface to ZLib shipped with ZLib C source }
-  zlibpas,
-{$ELSEIF Defined(ZLIBEX)}
-  { Use ZlibEx unit }
-  ZLibEx,
-{$ELSEIF Defined(DELPHIZLIB)}
-  { Use ZLib unit shipped with Delphi }
-  ZLib,
 {$IFEND}
   ImagingTypes, SysUtils, Classes;
 
-{$IF Defined(IMPASZLIB) or Defined(FPCPASZLIB) or Defined(ZLIBPAS)}
+{$IF Defined(FPCPASZLIB)}
 type
   TZStreamRec = z_stream;
 {$IFEND}
@@ -128,30 +86,6 @@ type
     constructor Create(Strm: TStream);
   end;
 
-{ TCompressionStream compresses data on the fly as data is written to it, and
-  stores the compressed data to another stream.
-
-  TCompressionStream is write-only and strictly sequential. Reading from the
-  stream will raise an exception. Using Seek to move the stream pointer
-  will raise an exception.
-
-  Output data is cached internally, written to the output stream only when
-  the internal output buffer is full.  All pending output data is flushed
-  when the stream is destroyed.
-
-  The Position property returns the number of uncompressed bytes of
-  data that have been written to the stream so far.
-
-  CompressionRate returns the on-the-fly percentage by which the original
-  data has been compressed:  (1 - (CompressedBytes / UncompressedBytes)) * 100
-  If raw data size = 100 and compressed data size = 25, the CompressionRate
-  is 75%
-
-  The OnProgress event is called each time the output buffer is filled and
-  written to the output stream.  This is useful for updating a progress
-  indicator when you are writing a large chunk of data to the compression
-  stream in a single call.}
-
   TCompressionLevel = (clNone, clFastest, clDefault, clMax);
 
   TCompressionStream = class(TCustomZlibStream)
@@ -167,24 +101,6 @@ type
     property OnProgress;
   end;
 
-{ TDecompressionStream decompresses data on the fly as data is read from it.
-
-  Compressed data comes from a separate source stream.  TDecompressionStream
-  is read-only and unidirectional; you can seek forward in the stream, but not
-  backwards.  The special case of setting the stream position to zero is
-  allowed.  Seeking forward decompresses data until the requested position in
-  the uncompressed data has been reached.  Seeking backwards, seeking relative
-  to the end of the stream, requesting the size of the stream, and writing to
-  the stream will raise an exception.
-
-  The Position property returns the number of bytes of uncompressed data that
-  have been read from the stream so far.
-
-  The OnProgress event is called each time the internal input buffer of
-  compressed data is exhausted and the next block is read from the input stream.
-  This is useful for updating a progress indicator when you are reading a
-  large chunk of data from the decompression stream in a single call.}
-
   TDecompressionStream = class(TCustomZlibStream)
   public
     constructor Create(Source: TStream);
@@ -195,22 +111,11 @@ type
     property OnProgress;
   end;
 
-{ CompressBuf compresses data, buffer to buffer, in one call.
-   In: InBuf = ptr to compressed data
-       InBytes = number of bytes in InBuf
-  Out: OutBuf = ptr to newly allocated buffer containing decompressed data
-       OutBytes = number of bytes in OutBuf   }
 procedure CompressBuf(const InBuf: Pointer; InBytes: Integer;
   var OutBuf: Pointer; var OutBytes: Integer;
   CompressLevel: Integer = Z_DEFAULT_COMPRESSION;
   CompressStrategy: Integer = Z_DEFAULT_STRATEGY);
 
-{ DecompressBuf decompresses data, buffer to buffer, in one call.
-   In: InBuf = ptr to compressed data
-       InBytes = number of bytes in InBuf
-       OutEstimate = zero, or est. size of the decompressed data
-  Out: OutBuf = ptr to newly allocated buffer containing decompressed data
-       OutBytes = number of bytes in OutBuf   }
 procedure DecompressBuf(const InBuf: Pointer; InBytes: Integer;
  OutEstimate: Integer; var OutBuf: Pointer; var OutBytes: Integer);
 
@@ -223,23 +128,23 @@ implementation
 
 const
   ZErrorMessages: array[0..9] of PAnsiChar = (
-    'need dictionary',        // Z_NEED_DICT      (2)
-    'stream end',             // Z_STREAM_END     (1)
-    '',                       // Z_OK             (0)
-    'file error',             // Z_ERRNO          (-1)
-    'stream error',           // Z_STREAM_ERROR   (-2)
-    'data error',             // Z_DATA_ERROR     (-3)
-    'insufficient memory',    // Z_MEM_ERROR      (-4)
-    'buffer error',           // Z_BUF_ERROR      (-5)
-    'incompatible version',   // Z_VERSION_ERROR  (-6)
+    'need dictionary',
+    'stream end',
+    '',
+    'file error',
+    'stream error',
+    'data error',
+    'insufficient memory',
+    'buffer error',
+    'incompatible version',
     '');
 
-function zlibAllocMem(AppData: Pointer; Items, Size: Cardinal): Pointer;
+function zlibAllocMem(AppData: Pointer; Items, Size: Cardinal): Pointer; cdecl;
 begin
   GetMem(Result, Items*Size);
 end;
 
-procedure zlibFreeMem(AppData, Block: Pointer);
+procedure zlibFreeMem(AppData, Block: Pointer); cdecl;
 begin
   FreeMem(Block);
 end;
@@ -248,14 +153,14 @@ function CCheck(code: Integer): Integer;
 begin
   Result := code;
   if code < 0 then
-    raise ECompressionError.Create('zlib: ' + ZErrorMessages[2 - code]);
+    raise ECompressionError.Create('zlib: ' + string(ZErrorMessages[2 - code]));
 end;
 
 function DCheck(code: Integer): Integer;
 begin
   Result := code;
   if code < 0 then
-    raise EDecompressionError.Create('zlib: ' + ZErrorMessages[2 - code]);
+    raise EDecompressionError.Create('zlib: ' + string(ZErrorMessages[2 - code]));
 end;
 
 procedure CompressBuf(const InBuf: Pointer; InBytes: Integer;
@@ -266,7 +171,7 @@ var
   P: Pointer;
 begin
   FillChar(strm, sizeof(strm), 0);
-{$IFNDEF FPCPASZLIB}
+{$IFDEF ZLIBNG_EXTERNAL}
   strm.zalloc := @zlibAllocMem;
   strm.zfree := @zlibFreeMem;
 {$ENDIF}
@@ -278,8 +183,8 @@ begin
     strm.next_out := OutBuf;
     strm.avail_out := OutBytes;
 
-    CCheck(deflateInit2(strm, CompressLevel, Z_DEFLATED, MAX_WBITS,
-      DEF_MEM_LEVEL, CompressStrategy));
+    CCheck(deflateInit2_(strm, CompressLevel, Z_DEFLATED, MAX_WBITS,
+      DEF_MEM_LEVEL, CompressStrategy, zlib_version, sizeof(strm)));
 
     try
       while CCheck(deflate(strm, Z_FINISH)) <> Z_STREAM_END do
@@ -309,7 +214,7 @@ var
   BufInc: Integer;
 begin
   FillChar(strm, sizeof(strm), 0);
-{$IFNDEF FPCPASZLIB}
+{$IFDEF ZLIBNG_EXTERNAL}
   strm.zalloc := @zlibAllocMem;
   strm.zfree := @zlibFreeMem;
 {$ENDIF}
@@ -352,7 +257,7 @@ begin
   inherited Create;
   FStrm := Strm;
   FStrmPos := Strm.Position;
-{$IFNDEF FPCPASZLIB}
+{$IFDEF ZLIBNG_EXTERNAL}
   FZRec.zalloc := @zlibAllocMem;
   FZRec.zfree := @zlibFreeMem;
 {$ENDIF}
