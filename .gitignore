@@ -255,6 +255,14 @@ dependencies/
 # Subfolders: win64/, macos-arm64/, macos-x64/, linux-x64/
 # Do NOT ignore libs/ - we want these in the repository
 
+# Override global patterns for libs/ folder - include all binaries
+!libs/
+!libs/**
+!libs/**/*.dll
+!libs/**/*.so
+!libs/**/*.so.*
+!libs/**/*.dylib
+
 # =============================================================================
 # End of .gitignore
 # =============================================================================
