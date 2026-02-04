@@ -1,5 +1,5 @@
 ﻿{
-  Vampyre Imaging Library
+  Dracoola Imaging Library
   by Marek Mauder
   https://github.com/galfar/imaginglib
   https://imaginglib.sourceforge.io
@@ -148,7 +148,7 @@ function ConvertImage(var Image: TImageData; DestFormat: TImageFormat): Boolean;
 { Flips given image. Reverses the image along its horizontal axis - the top
   becomes the bottom and vice versa.}
 function FlipImage(var Image: TImageData): Boolean;
-{ Mirrors given image. Reverses the image along its vertical axis � the left
+{ Mirrors given image. Reverses the image along its vertical axis   the left
   side becomes the right and vice versa.}
 function MirrorImage(var Image: TImageData): Boolean;
 { Resizes given image to new dimensions. Nearest, bilinear, or bicubic filtering
@@ -677,7 +677,7 @@ procedure RaiseImaging(const Msg: string; const Args: array of const); overload;
 procedure RaiseImaging(const Msg: string); overload; {$IFDEF USE_INLINE}inline;{$ENDIF}
 
 const
-  SImagingLibTitle = 'Vampyre Imaging Library';
+  SImagingLibTitle = 'Dracoola Imaging Library';
 
 implementation
 
@@ -714,7 +714,6 @@ uses
   ImagingExtFileFormats,
 {$ENDIF}
 {$ENDIF}
-  //ImagingDebug,
   ImagingFormats, ImagingUtility, ImagingIO, Variants;
 
 resourcestring
@@ -882,7 +881,7 @@ begin
       Image.Format := Format;
 
     // Get extended format info
-    FInfo := ImageFormatInfos[Image.Format];
+    FInfo := ImageFormatInfos[Ord(Image.Format)];
     if FInfo = nil then
     begin
       InitImage(Image);
@@ -922,9 +921,9 @@ begin
   try
     Result := (LongInt(Image.Format) >= LongInt(Low(TImageFormat))) and
       (LongInt(Image.Format) <= LongInt(High(TImageFormat))) and
-      (ImageFormatInfos[Image.Format] <> nil) and
-      (Assigned(ImageFormatInfos[Image.Format].GetPixelsSize) and
-      (ImageFormatInfos[Image.Format].GetPixelsSize(Image.Format,
+      (ImageFormatInfos[Ord(Image.Format)] <> nil) and
+      (Assigned(ImageFormatInfos[Ord(Image.Format)].GetPixelsSize) and
+      (ImageFormatInfos[Ord(Image.Format)].GetPixelsSize(Image.Format,
       Image.Width, Image.Height) = Image.Size));
   except
     // Possible int overflows or other errors
@@ -1323,7 +1322,7 @@ begin
     else
       InitImage(Clone);
 
-    Info := ImageFormatInfos[Image.Format];
+    Info := ImageFormatInfos[Ord(Image.Format)];
     Clone.Width := Image.Width;
     Clone.Height := Image.Height;
     Clone.Format := Image.Format;
@@ -1359,8 +1358,8 @@ begin
     // If default format is set we use DefaultImageFormat
     if DestFormat = ifDefault then
       DestFormat := DefaultImageFormat;
-    SrcInfo := ImageFormatInfos[Format];
-    DstInfo := ImageFormatInfos[DestFormat];
+    SrcInfo := ImageFormatInfos[Ord(Format)];
+    DstInfo := ImageFormatInfos[Ord(DestFormat)];
 
     if SrcInfo = DstInfo then
     begin
@@ -1467,10 +1466,10 @@ begin
   if TestImage(Image) then
   with Image do
   try
-    if ImageFormatInfos[OldFmt].IsSpecial then
+    if ImageFormatInfos[Ord(OldFmt)].IsSpecial then
       ConvertImage(Image, ifDefault);
 
-    WidthBytes := Width * ImageFormatInfos[Format].BytesPerPixel;
+    WidthBytes := Width * ImageFormatInfos[Ord(Format)].BytesPerPixel;
     GetMem(Buff, WidthBytes);
     try
       // Swap all scanlines of image
@@ -1507,10 +1506,10 @@ begin
   if TestImage(Image) then
   with Image do
   try
-    if ImageFormatInfos[OldFmt].IsSpecial then
+    if ImageFormatInfos[Ord(OldFmt)].IsSpecial then
       ConvertImage(Image, ifDefault);
 
-    Bpp := ImageFormatInfos[Format].BytesPerPixel;
+    Bpp := ImageFormatInfos[Ord(Format)].BytesPerPixel;
     WidthDiv2 := Width div 2;
     WidthBytes := Width * Bpp;
 
@@ -1588,7 +1587,7 @@ begin
   with Image do
   try
     NumPixels := NativeInt(Width) * Height;
-    Info := ImageFormatInfos[Format];
+    Info := ImageFormatInfos[Ord(Format)];
     Data := Bits;
 
     if (Info.Format = ifR8G8B8) or ((Info.Format = ifA8R8G8B8) and
@@ -1697,7 +1696,7 @@ begin
     // We use median cut algorithm to create reduced palette and to
     // fill Data with indices to this palette
     ReduceColorsMedianCut(NumPixels, Bits, PByte(Data),
-      ImageFormatInfos[Format], @TmpInfo, MaxColors, ColorReductionMask, Pal);
+      ImageFormatInfos[Ord(Format)], @TmpInfo, MaxColors, ColorReductionMask, Pal);
     Col := Bits;
     Index := Data;
     // Then we write reduced colors to the input image
@@ -1824,7 +1823,7 @@ begin
     FreeImage(Image);
     NewImage(CloneARGB.Width, CloneARGB.Height, ifIndex8, Image);
 
-    Info := ImageFormatInfos[Image.Format];
+    Info := ImageFormatInfos[Ord(Image.Format)];
     MaxEntries := Min(Info.PaletteEntries, Entries);
     Move(Pal^, Image.Palette^, MaxEntries * SizeOf(TColor32Rec));
     PIndex := Image.Bits;
@@ -1865,7 +1864,7 @@ begin
 
   if TestImage(Image) then
   try
-    Info := ImageFormatInfos[Image.Format];
+    Info := ImageFormatInfos[Ord(Image.Format)];
     if Info.IsSpecial then
       ConvertImage(Image, ifDefault);
 
@@ -1947,13 +1946,13 @@ begin
     ReduceColorsMedianCut(0, nil, nil, nil, nil, 0, 0, nil, [raCreateHistogram]);
     for I := 0 to Length(Images) - 1 do
     begin
-      SrcInfo := ImageFormatInfos[Images[I].Format];
+      SrcInfo := ImageFormatInfos[Ord(Images[I].Format)];
       if SrcInfo.IsIndexed or SrcInfo.IsSpecial then
       begin
         // create temp image in supported format for updating histogram
         CloneImage(Images[I], TempImage);
         ConvertImage(TempImage, ifA8R8G8B8);
-        SrcInfo := ImageFormatInfos[TempImage.Format];
+        SrcInfo := ImageFormatInfos[Ord(TempImage.Format)];
       end
       else
         TempImage := Images[I];
@@ -1972,18 +1971,18 @@ begin
     if ConvertImages then
     begin
       DstFormat := ifIndex8;
-      DstInfo := ImageFormatInfos[DstFormat];
+      DstInfo := ImageFormatInfos[Ord(DstFormat)];
       MaxColors := Min(DstInfo.PaletteEntries, MaxColors);
 
       for I := 0 to Length(Images) - 1 do
       begin
-        SrcInfo := ImageFormatInfos[Images[I].Format];
+        SrcInfo := ImageFormatInfos[Ord(Images[I].Format)];
         if SrcInfo.IsIndexed or SrcInfo.IsSpecial then
         begin
           // If source image is in format not supported by ReduceColorsMedianCut
           // we convert it
           ConvertImage(Images[I], ifA8R8G8B8);
-          SrcInfo := ImageFormatInfos[Images[I].Format];
+          SrcInfo := ImageFormatInfos[Ord(Images[I].Format)];
         end;
 
         InitImage(Target);
@@ -2155,7 +2154,7 @@ var
     RotPix, Pix: PByte;
   begin
     InitImage(RotImage);
-    BytesPerPixel := ImageFormatInfos[Image.Format].BytesPerPixel;
+    BytesPerPixel := ImageFormatInfos[Ord(Image.Format)].BytesPerPixel;
 
     if ((Angle = 90) or (Angle = 270)) and (Image.Width <> Image.Height) then
       NewImage(Image.Height, Image.Width, Image.Format, RotImage)
@@ -2221,7 +2220,7 @@ begin
       Exit;
 
     OldFmt := Image.Format;
-    if ImageFormatInfos[Image.Format].IsSpecial then
+    if ImageFormatInfos[Ord(Image.Format)].IsSpecial then
       ConvertImage(Image, ifDefault);
 
     if (Angle > 45) and (Angle <= 135) then
@@ -2276,7 +2275,7 @@ begin
     else
       NewImage(Image.Width, Image.Height, Image.Format, RotImage);
 
-    BytesPerPixel := ImageFormatInfos[Image.Format].BytesPerPixel;
+    BytesPerPixel := ImageFormatInfos[Ord(Image.Format)].BytesPerPixel;
 
     RotPix := RotImage.Bits;
     case AngleDeg of
@@ -2350,13 +2349,13 @@ begin
 
     if (Width > 0) and (Height > 0) then
     begin
-      Info := ImageFormatInfos[DstImage.Format];
+      Info := ImageFormatInfos[Ord(DstImage.Format)];
       if Info.IsSpecial then
       begin
         // If dest image is in special format we convert it to default
         OldFormat := Info.Format;
         ConvertImage(DstImage, ifDefault);
-        Info := ImageFormatInfos[DstImage.Format];
+        Info := ImageFormatInfos[Ord(DstImage.Format)];
       end;
       if SrcImage.Format <> DstImage.Format then
       begin
@@ -2412,10 +2411,10 @@ begin
     if (Width > 0) and (Height > 0) then
     begin
       OldFmt := Image.Format;
-      if ImageFormatInfos[OldFmt].IsSpecial then
+      if ImageFormatInfos[Ord(OldFmt)].IsSpecial then
         ConvertImage(Image, ifDefault);
 
-      Info := ImageFormatInfos[Image.Format];
+      Info := ImageFormatInfos[Ord(Image.Format)];
       Bpp := Info.BytesPerPixel;
       ImageWidthBytes := Image.Width * Bpp;
       RectWidthBytes := Width * Bpp;
@@ -2465,10 +2464,10 @@ begin
     if (Width > 0) and (Height > 0) then
     begin
       OldFmt := Image.Format;
-      if ImageFormatInfos[OldFmt].IsSpecial then
+      if ImageFormatInfos[Ord(OldFmt)].IsSpecial then
         ConvertImage(Image, ifDefault);
 
-      Info := ImageFormatInfos[Image.Format];
+      Info := ImageFormatInfos[Ord(Image.Format)];
       Bpp := Info.BytesPerPixel;
       WidthBytes := Image.Width * Bpp;
       LinePointer := @PByteArray(Image.Bits)[Y * WidthBytes + X * Bpp];
@@ -2520,14 +2519,14 @@ begin
     else if (SrcWidth > 0) and (SrcHeight > 0) and (DstWidth > 0) and (DstHeight > 0) then
     begin
       // If source and dest rectangles don't have the same size we do stretch
-      Info := ImageFormatInfos[DstImage.Format];
+      Info := ImageFormatInfos[Ord(DstImage.Format)];
 
       if Info.IsSpecial then
       begin
         // If dest image is in special format we convert it to default
         OldFormat := Info.Format;
         ConvertImage(DstImage, ifDefault);
-        Info := ImageFormatInfos[DstImage.Format];
+        Info := ImageFormatInfos[Ord(DstImage.Format)];
       end;
 
       if SrcImage.Format <> DstImage.Format then
@@ -2580,7 +2579,7 @@ var
   BytesPerPixel: LongInt;
 begin
   Assert(Pixel <> nil);
-  BytesPerPixel := ImageFormatInfos[Image.Format].BytesPerPixel;
+  BytesPerPixel := ImageFormatInfos[Ord(Image.Format)].BytesPerPixel;
   CopyPixel(@PByteArray(Image.Bits)[(Y * Image.Width + X) * BytesPerPixel],
     Pixel, BytesPerPixel);
 end;
@@ -2590,7 +2589,7 @@ var
   BytesPerPixel: LongInt;
 begin
   Assert(Pixel <> nil);
-  BytesPerPixel := ImageFormatInfos[Image.Format].BytesPerPixel;
+  BytesPerPixel := ImageFormatInfos[Ord(Image.Format)].BytesPerPixel;
   CopyPixel(Pixel, @PByteArray(Image.Bits)[(Y * Image.Width + X) * BytesPerPixel],
     BytesPerPixel);
 end;
@@ -2600,7 +2599,7 @@ var
   Info: PImageFormatInfo;
   Data: PByte;
 begin
-  Info := ImageFormatInfos[Image.Format];
+  Info := ImageFormatInfos[Ord(Image.Format)];
   Data := @PByteArray(Image.Bits)[(Y * Image.Width + X) * Info.BytesPerPixel];
   Result := GetPixel32Generic(Data, Info, Image.Palette);
 end;
@@ -2610,7 +2609,7 @@ var
   Info: PImageFormatInfo;
   Data: PByte;
 begin
-  Info := ImageFormatInfos[Image.Format];
+  Info := ImageFormatInfos[Ord(Image.Format)];
   Data := @PByteArray(Image.Bits)[(Y * Image.Width + X) * Info.BytesPerPixel];
   SetPixel32Generic(Data, Info, Image.Palette, Color);
 end;
@@ -2620,7 +2619,7 @@ var
   Info: PImageFormatInfo;
   Data: PByte;
 begin
-  Info := ImageFormatInfos[Image.Format];
+  Info := ImageFormatInfos[Ord(Image.Format)];
   Data := @PByteArray(Image.Bits)[(Y * Image.Width + X) * Info.BytesPerPixel];
   Result := GetPixelFPGeneric(Data, Info, Image.Palette);
 end;
@@ -2630,7 +2629,7 @@ var
   Info: PImageFormatInfo;
   Data: PByte;
 begin
-  Info := ImageFormatInfos[Image.Format];
+  Info := ImageFormatInfos[Ord(Image.Format)];
   Data := @PByteArray(Image.Bits)[(Y * Image.Width + X) * Info.BytesPerPixel];
   SetPixelFPGeneric(Data, Info, Image.Palette, Color);
 end;
@@ -2817,9 +2816,9 @@ end;
 function GetImageFormatInfo(Format: TImageFormat; out Info: TImageFormatInfo): Boolean;
 begin
   FillChar(Info, SizeOf(Info), 0);
-  if ImageFormatInfos[Format] <> nil then
+  if ImageFormatInfos[Ord(Format)] <> nil then
   begin
-    Info := ImageFormatInfos[Format]^;
+    Info := ImageFormatInfos[Ord(Format)]^;
     Result := True;
   end
   else
@@ -2828,8 +2827,8 @@ end;
 
 function GetPixelsSize(Format: TImageFormat; Width, Height: LongInt): Int64;
 begin
-  if ImageFormatInfos[Format] <> nil then
-    Result := ImageFormatInfos[Format].GetPixelsSize(Format, Width, Height)
+  if ImageFormatInfos[Ord(Format)] <> nil then
+    Result := ImageFormatInfos[Ord(Format)].GetPixelsSize(Format, Width, Height)
   else
     Result := 0;
 end;
@@ -2862,7 +2861,7 @@ var
   WidthBytes, I: Integer;
   Info: PImageFormatInfo;
 begin
-  Info := ImageFormatInfos[Format];
+  Info := ImageFormatInfos[Ord(Format)];
   // Calc scanline size
   WidthBytes := Info.GetPixelsSize(Format, Width, 1);
   if RowLength = 0 then
@@ -2942,7 +2941,7 @@ var
 begin
   Assert(Data <> nil);
   Assert((Left + Width <= Image.Width) and (Top + Height <= Image.Height));
-  Info := ImageFormatInfos[Image.Format];
+  Info := ImageFormatInfos[Ord(Image.Format)];
 
   // Calc scanline size
   DestScanBytes := Info.GetPixelsSize(Info.Format, Image.Width, 1);
@@ -2970,7 +2969,7 @@ var
   WidthBytes, I: Integer;
   Info: PImageFormatInfo;
 begin
-  Info := ImageFormatInfos[Image.Format];
+  Info := ImageFormatInfos[Ord(Image.Format)];
   // Calc scanline size
   WidthBytes := Info.GetPixelsSize(Image.Format, Image.Width, 1);
   if RowLength = 0 then
@@ -3044,7 +3043,7 @@ var
 begin
   Assert(Data <> nil);
   Assert((Left + Width <= Image.Width) and (Top + Height <= Image.Height));
-  Info := ImageFormatInfos[Image.Format];
+  Info := ImageFormatInfos[Ord(Image.Format)];
 
   // Calc scanline size
   SrcScanBytes := Info.GetPixelsSize(Info.Format, Image.Width, 1);
@@ -3084,7 +3083,7 @@ begin
 
   NewImage(Max(DestSize.CX, 1), Max(DestSize.CY, 1), SrcImage.Format, DestImage);
   if SrcImage.Palette <> nil then
-    CopyPalette(SrcImage.Palette, DestImage.Palette, 0, 0, ImageFormatInfos[SrcImage.Format].PaletteEntries);
+    CopyPalette(SrcImage.Palette, DestImage.Palette, 0, 0, ImageFormatInfos[Ord(SrcImage.Format)].PaletteEntries);
 
   StretchRect(SrcImage, 0, 0, CurSize.CX, CurSize.CY, DestImage, 0, 0,
     DestSize.CX, DestSize.CY, Filter);
@@ -3164,8 +3163,8 @@ end;
 
 function GetFormatName(Format: TImageFormat): string;
 begin
-  if ImageFormatInfos[Format] <> nil then
-    Result := ImageFormatInfos[Format].Name
+  if ImageFormatInfos[Ord(Format)] <> nil then
+    Result := ImageFormatInfos[Ord(Format)].Name
   else
     Result := SUnknownFormat;
 end;
@@ -3190,7 +3189,7 @@ end;
 
 function GetVersionStr: string;
 begin
-  Result := Format('%.1d.%.2d', [ImagingVersionMajor, ImagingVersionMinor]);
+  Result := Format('%d.%.2d', [ImagingVersionYear, ImagingVersionMonth]);
 end;
 
 function IffFormat(Condition: Boolean; const TruePart, FalsePart: TImageFormat): TImageFormat;
@@ -3606,7 +3605,7 @@ end;
 
 function TImageFileFormat.GetFormatInfo(Format: TImageFormat): TImageFormatInfo;
 begin
-  Result := ImageFormatInfos[Format]^;
+  Result := ImageFormatInfos[Ord(Format)]^;
 end;
 
 function TImageFileFormat.GetSupportedFormats: TImageFormats;

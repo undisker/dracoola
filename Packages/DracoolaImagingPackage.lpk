@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="5">
+    <Name Value="DracoolaImagingPackage"/>
+    <Type Value="RunAndDesignTime"/>
+    <Author Value="Dracoola Imaging Library (Fork of Vampyre Imaging Library)"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <SearchPaths>
+        <IncludeFiles Value="../Source;../Source/JpegTurbo;../Source/ZLib"/>
+        <OtherUnitFiles Value="../Source;../Source/JpegTurbo;../Source/ZLib"/>
+        <UnitOutputDirectory Value="../Bin/$(TargetCPU)-$(TargetOS)/pkg"/>
+      </SearchPaths>
+      <Parsing>
+        <SyntaxOptions>
+          <IncludeAssertionCode Value="True"/>
+        </SyntaxOptions>
+      </Parsing>
+      <CodeGeneration>
+        <Optimizations>
+          <OptimizationLevel Value="3"/>
+          <VariablesInRegisters Value="True"/>
+        </Optimizations>
+      </CodeGeneration>
+      <Other>
+        <Verbosity>
+          <ShowNotes Value="False"/>
+          <ShowHints Value="False"/>
+        </Verbosity>
+        <CustomOptions Value="-dDONT_LINK_EXTRAS"/>
+        <OtherDefines Count="1">
+          <Define0 Value="DONT_LINK_EXTRAS"/>
+        </OtherDefines>
+      </Other>
+    </CompilerOptions>
+    <Description Value="Dracoola Imaging Library Package for Lazarus. High-performance FreePascal-only image loading, saving, and manipulation library with SIMD acceleration."/>
+    <License Value="MPL 2.0 (GPL compatible)"/>
+    <Version Major="1" Minor="0"/>
+    <Files Count="24">
+      <Item1>
+        <Filename Value="../Source/Imaging.pas"/>
+        <UnitName Value="Imaging"/>
+      </Item1>
+      <Item2>
+        <Filename Value="../Source/ImagingBitmap.pas"/>
+        <UnitName Value="ImagingBitmap"/>
+      </Item2>
+      <Item3>
+        <Filename Value="../Source/ImagingCanvases.pas"/>
+        <UnitName Value="ImagingCanvases"/>
+      </Item3>
+      <Item4>
+        <Filename Value="../Source/ImagingClasses.pas"/>
+        <UnitName Value="ImagingClasses"/>
+      </Item4>
+      <Item5>
+        <Filename Value="../Source/ImagingDds.pas"/>
+        <UnitName Value="ImagingDds"/>
+      </Item5>
+      <Item6>
+        <Filename Value="../Source/ImagingFormats.pas"/>
+        <UnitName Value="ImagingFormats"/>
+      </Item6>
+      <Item7>
+        <Filename Value="../Source/ImagingIO.pas"/>
+        <UnitName Value="ImagingIO"/>
+      </Item7>
+      <Item8>
+        <Filename Value="../Source/ImagingJpeg.pas"/>
+        <UnitName Value="ImagingJpeg"/>
+      </Item8>
+      <Item9>
+        <Filename Value="../Source/ImagingNetworkGraphics.pas"/>
+        <UnitName Value="ImagingNetworkGraphics"/>
+      </Item9>
+      <Item10>
+        <Filename Value="../Source/ImagingOptions.inc"/>
+        <Type Value="Include"/>
+      </Item10>
+      <Item11>
+        <Filename Value="../Source/ImagingTarga.pas"/>
+        <UnitName Value="ImagingTarga"/>
+      </Item11>
+      <Item12>
+        <Filename Value="../Source/ImagingTypes.pas"/>
+        <UnitName Value="ImagingTypes"/>
+      </Item12>
+      <Item13>
+        <Filename Value="../Source/ImagingUtility.pas"/>
+        <UnitName Value="ImagingUtility"/>
+      </Item13>
+      <Item14>
+        <Filename Value="../Source/ImagingPortableMaps.pas"/>
+        <UnitName Value="ImagingPortableMaps"/>
+      </Item14>
+      <Item15>
+        <Filename Value="../Source/ImagingGif.pas"/>
+        <UnitName Value="ImagingGif"/>
+      </Item15>
+      <Item16>
+        <Filename Value="../Source/ImagingColors.pas"/>
+        <UnitName Value="ImagingColors"/>
+      </Item16>
+      <Item17>
+        <Filename Value="../Source/ImagingRadiance.pas"/>
+        <UnitName Value="ImagingRadiance"/>
+      </Item17>
+      <Item18>
+        <Filename Value="../Source/ImagingQoi.pas"/>
+        <UnitName Value="ImagingQoi"/>
+      </Item18>
+      <Item19>
+        <Filename Value="../Source/ImagingMemory.pas"/>
+        <UnitName Value="ImagingMemory"/>
+      </Item19>
+      <Item20>
+        <Filename Value="../Source/ImagingSimd.pas"/>
+        <UnitName Value="ImagingSimd"/>
+      </Item20>
+      <Item21>
+        <Filename Value="../Source/ImagingSimdResize.pas"/>
+        <UnitName Value="ImagingSimdResize"/>
+      </Item21>
+      <Item22>
+        <Filename Value="../Source/ImagingThreadPool.pas"/>
+        <UnitName Value="ImagingThreadPool"/>
+      </Item22>
+      <Item23>
+        <Filename Value="../Source/JpegTurbo/libjpegturbo.pas"/>
+        <UnitName Value="libjpegturbo"/>
+      </Item23>
+      <Item24>
+        <Filename Value="../Source/ZLib/zlibng_bindings.pas"/>
+        <UnitName Value="zlibng_bindings"/>
+      </Item24>
+    </Files>
+    <CompatibilityMode Value="True"/>
+    <RequiredPkgs Count="1">
+      <Item1>
+        <PackageName Value="LCL"/>
+        <MinVersion Major="1" Valid="True"/>
+      </Item1>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>

@@ -16,9 +16,9 @@ FPCOS=$($FPC -iTO | tr -d '\r')
 FPCTARGET=$FPCCPU-$FPCOS
 
 ROOTDIR=".."
-DEMOPATH="$ROOTDIR/Demos/ObjectPascal" 
+DEMOPATH="$ROOTDIR/Demos/ObjectPascal"
 BINPATH="$ROOTDIR/Demos/Bin"
-UNITPATH="$ROOTDIR/Demos/Bin/Dcu/$FPCTARGET"
+UNITPATH="$ROOTDIR/Demos/Bin/Units/$FPCTARGET"
 # FPC does not like creating any new directories passed by -FE -FU
 mkdir -p $UNITPATH
 mkdir -p $BINPATH

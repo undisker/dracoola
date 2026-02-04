@@ -6,7 +6,7 @@ echo.
 set ROOTDIR=..
 set DEMOPATH=%ROOTDIR%\Demos\ObjectPascal
 set BINPATH=%ROOTDIR%\Demos\Bin
-set UNITPATH=%ROOTDIR%\Demos\Bin\Dcu\
+set UNITPATH=%ROOTDIR%\Demos\Bin\Units\
 set OUTPUT=-FE%BINPATH% -FU%UNITPATH%
 rem This is how you suppress -vn set in fpc.cfg
 set OPTIONS=-B -O3 -Xs -vn-
@@ -16,15 +16,14 @@ rem FPC does not like creating any new directories passed by -FE -FU
 mkdir %BINPATH%\ %UNITPATH%\  2>nul
 
 set DEFINES=-dDONT_LINK_EXTRAS
-set UNITS=-Fu%ROOTDIR%\Source -Fu%ROOTDIR%\Source\JpegLib -Fu%ROOTDIR%\Source\ZLib -Fu%ROOTDIR%\Extensions -Fu%DEMOPATH%\Common
-set INCLUDE=-Fi%ROOTDIR%\Source 
+set UNITS=-Fu%ROOTDIR%\Source -Fu%ROOTDIR%\Source\JpegTurbo -Fu%ROOTDIR%\Source\ZLib -Fu%ROOTDIR%\Extensions -Fu%DEMOPATH%\Common
+set INCLUDE=-Fi%ROOTDIR%\Source
 
 set DEMOSBUILD=0
-set DEMOCOUNT=3
+set DEMOCOUNT=2
 
-call :BUILD SDLDemo\SDLDemo.dpr 
-call :BUILD OpenGLDemo\OpenGLDemo.dpr 
-call :BUILD D3DDemo\D3DDemo.dpr 
+call :BUILD SDLDemo\SDLDemo.lpr
+call :BUILD OpenGLDemo\OpenGLDemo.lpr 
 
 goto END
 

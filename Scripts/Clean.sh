@@ -31,8 +31,10 @@ delWholeDir() {
 }
 
 
+# Clean old Dcu directories (legacy) and new Units directories
 delWholeDir "$ROOTDIR/Bin/Dcu"
 delWholeDir "$ROOTDIR/Demos/Bin/Dcu"
+delWholeDir "$ROOTDIR/Demos/Bin/Units"
 
 delInTree "$ROOTDIR/Source" "$ALL_PATS"
 delInTree "$ROOTDIR/Demos" "$ALL_PATS" 

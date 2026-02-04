@@ -1,5 +1,5 @@
 {
-  Vampyre Imaging Library
+  Dracoola Imaging Library
   by Marek Mauder
   https://github.com/galfar/imaginglib
   https://imaginglib.sourceforge.io
@@ -10,29 +10,20 @@
 } 
 
 { This unit contains image format loader/saver for TIFF images
-  using LibTiff C library compiled to object files or LibTiff DLL/SO.
+  using LibTiff dynamic library (DLL/SO/dylib).
 
-  Supported platforms/compilers are now:
-    Win32 Delphi: obj, dll
-    Win64 Delphi: dll
-    Win32, Win64 FPC: obj, dll
-    Linux/Unix/macOS 32/64 FPC: dll
+  Supported platforms:
+    Windows x64: libtiff.dll
+    Linux x64: libtiff.so.5
+    macOS x64/ARM64: libtiff.5.dylib
+
+  Note: Static object file linking has been removed in favor of dynamic
+  library loading only. This provides better cross-platform support and
+  smaller binary sizes.
 }
 unit ImagingTiffLib;
 
 {$I ImagingOptions.inc}
-
-{$IF Defined(LINUX) or Defined(BSD) or Defined(MACOS)}
-  // Use LibTiff dynamic library in Linux/BSD instead of precompiled objects.
-  // It's installed on most systems so let's use it and keep the binary smaller.
-  // In macOS it's usually not installed but if it is let's use it.
-  {$DEFINE USE_DYN_LIB}
-{$IFEND}
-
-{$IF Defined(DCC) and Defined(WIN64)}
-  // For Delphi Win64 target try to use LibTiff dynamic library.
-  {$DEFINE USE_DYN_LIB}
-{$IFEND}
 
 {$IF Defined(POSIX) and Defined(CPUX64)}
   // Workaround for problem on 64bit Linux where thandle_t in libtiff is
@@ -40,18 +31,12 @@ unit ImagingTiffLib;
   {$DEFINE HANDLE_NOT_POINTER_SIZED}
 {$IFEND}
 
-{.$DEFINE USE_DYN_LIB}
-
 interface
 
 uses
   SysUtils, Imaging, ImagingTypes, ImagingUtility, ImagingIO,
   ImagingTiff,
-{$IFDEF USE_DYN_LIB}
   LibTiffDynLib;
-{$ELSE}
-  LibTiffDelphi;
-{$ENDIF}
 
 type
   { TIFF (Tag Image File Format) loader/saver class. Uses LibTiff so
@@ -601,12 +586,9 @@ begin
 end;
 
 initialization
-{$IFDEF USE_DYN_LIB}
-  // If using dynamic library only register the format if
-  // the library loads successfully.
+  // Only register the format if the dynamic library loads successfully
   if LibTiffDynLib.LoadTiffLibrary then
-{$ENDIF}
-  RegisterImageFileFormat(TTiffLibFileFormat);
+    RegisterImageFileFormat(TTiffLibFileFormat);
 
 {
   File Notes:

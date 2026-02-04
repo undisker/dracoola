@@ -1,5 +1,5 @@
 {
-  Vampyre Imaging Library
+  Dracoola Imaging Library
   by Marek Mauder
   https://github.com/galfar/imaginglib
   https://imaginglib.sourceforge.io
@@ -20,8 +20,13 @@ interface
 uses
   ImagingTypes, Imaging, ImagingUtility;
 
+const
+  { Maximum image format ordinal value for array indexing }
+  MaxImageFormatOrd = 255;
+
 type
-  TImageFormatInfoArray = array[TImageFormat] of PImageFormatInfo;
+  { Array indexed by image format ordinal values (0..255) }
+  TImageFormatInfoArray = array[0..MaxImageFormatOrd] of PImageFormatInfo;
   PImageFormatInfoArray = ^TImageFormatInfoArray;
 
 
@@ -936,48 +941,48 @@ procedure InitImageFormats(var Infos: TImageFormatInfoArray);
 begin
   FInfos := @Infos;
 
-  Infos[ifDefault] := @A8R8G8B8Info;
+  Infos[Ord(ifDefault)] := @A8R8G8B8Info;
   // indexed formats
-  Infos[ifIndex8] := @Index8Info;
+  Infos[Ord(ifIndex8)] := @Index8Info;
   // grayscale formats
-  Infos[ifGray8] := @Gray8Info;
-  Infos[ifA8Gray8] := @A8Gray8Info;
-  Infos[ifGray16] := @Gray16Info;
-  Infos[ifGray32] := @Gray32Info;
-  Infos[ifGray64] := @Gray64Info;
-  Infos[ifA16Gray16] := @A16Gray16Info;
+  Infos[Ord(ifGray8)] := @Gray8Info;
+  Infos[Ord(ifA8Gray8)] := @A8Gray8Info;
+  Infos[Ord(ifGray16)] := @Gray16Info;
+  Infos[Ord(ifGray32)] := @Gray32Info;
+  Infos[Ord(ifGray64)] := @Gray64Info;
+  Infos[Ord(ifA16Gray16)] := @A16Gray16Info;
   // ARGB formats
-  Infos[ifX5R1G1B1] := @X5R1G1B1Info;
-  Infos[ifR3G3B2] := @R3G3B2Info;
-  Infos[ifR5G6B5] := @R5G6B5Info;
-  Infos[ifA1R5G5B5] := @A1R5G5B5Info;
-  Infos[ifA4R4G4B4] := @A4R4G4B4Info;
-  Infos[ifX1R5G5B5] := @X1R5G5B5Info;
-  Infos[ifX4R4G4B4] := @X4R4G4B4Info;
-  Infos[ifR8G8B8] := @R8G8B8Info;
-  Infos[ifA8R8G8B8] := @A8R8G8B8Info;
-  Infos[ifX8R8G8B8] := @X8R8G8B8Info;
-  Infos[ifR16G16B16] := @R16G16B16Info;
-  Infos[ifA16R16G16B16] := @A16R16G16B16Info;
-  Infos[ifB16G16R16] := @B16G16R16Info;
-  Infos[ifA16B16G16R16] := @A16B16G16R16Info;
+  Infos[Ord(ifX5R1G1B1)] := @X5R1G1B1Info;
+  Infos[Ord(ifR3G3B2)] := @R3G3B2Info;
+  Infos[Ord(ifR5G6B5)] := @R5G6B5Info;
+  Infos[Ord(ifA1R5G5B5)] := @A1R5G5B5Info;
+  Infos[Ord(ifA4R4G4B4)] := @A4R4G4B4Info;
+  Infos[Ord(ifX1R5G5B5)] := @X1R5G5B5Info;
+  Infos[Ord(ifX4R4G4B4)] := @X4R4G4B4Info;
+  Infos[Ord(ifR8G8B8)] := @R8G8B8Info;
+  Infos[Ord(ifA8R8G8B8)] := @A8R8G8B8Info;
+  Infos[Ord(ifX8R8G8B8)] := @X8R8G8B8Info;
+  Infos[Ord(ifR16G16B16)] := @R16G16B16Info;
+  Infos[Ord(ifA16R16G16B16)] := @A16R16G16B16Info;
+  Infos[Ord(ifB16G16R16)] := @B16G16R16Info;
+  Infos[Ord(ifA16B16G16R16)] := @A16B16G16R16Info;
   // floating point formats
-  Infos[ifR32F] := @R32FInfo;
-  Infos[ifA32R32G32B32F] := @A32R32G32B32FInfo;
-  Infos[ifA32B32G32R32F] := @A32B32G32R32FInfo;
-  Infos[ifR16F] := @R16FInfo;
-  Infos[ifA16R16G16B16F] := @A16R16G16B16FInfo;
-  Infos[ifA16B16G16R16F] := @A16B16G16R16FInfo;
-  Infos[ifR32G32B32F] := @R32G32B32FInfo;
-  Infos[ifB32G32R32F] := @B32G32R32FInfo;
+  Infos[Ord(ifR32F)] := @R32FInfo;
+  Infos[Ord(ifA32R32G32B32F)] := @A32R32G32B32FInfo;
+  Infos[Ord(ifA32B32G32R32F)] := @A32B32G32R32FInfo;
+  Infos[Ord(ifR16F)] := @R16FInfo;
+  Infos[Ord(ifA16R16G16B16F)] := @A16R16G16B16FInfo;
+  Infos[Ord(ifA16B16G16R16F)] := @A16B16G16R16FInfo;
+  Infos[Ord(ifR32G32B32F)] := @R32G32B32FInfo;
+  Infos[Ord(ifB32G32R32F)] := @B32G32R32FInfo;
   // special formats
-  Infos[ifDXT1] := @DXT1Info;
-  Infos[ifDXT3] := @DXT3Info;
-  Infos[ifDXT5] := @DXT5Info;
-  Infos[ifBTC] :=  @BTCInfo;
-  Infos[ifATI1N] := @ATI1NInfo;
-  Infos[ifATI2N] := @ATI2NInfo;
-  Infos[ifBinary] := @BinaryInfo;
+  Infos[Ord(ifDXT1)] := @DXT1Info;
+  Infos[Ord(ifDXT3)] := @DXT3Info;
+  Infos[Ord(ifDXT5)] := @DXT5Info;
+  Infos[Ord(ifBTC)] :=  @BTCInfo;
+  Infos[Ord(ifATI1N)] := @ATI1NInfo;
+  Infos[Ord(ifATI2N)] := @ATI2NInfo;
+  Infos[Ord(ifBinary)] := @BinaryInfo;
 
   PFR3G3B2 := PixelFormat(0, 3, 3, 2);
   PFX5R1G1B1 := PixelFormat(0, 1, 1, 1);
@@ -1317,10 +1322,21 @@ procedure ReduceColorsMedianCut(NumPixels: LongInt; Src, Dst: PByte; SrcInfo,
         until Box[I].List = nil;
         with Box[I] do
         begin
-          Represented.A := SumA div Total;
-          Represented.R := SumR div Total;
-          Represented.G := SumG div Total;
-          Represented.B := SumB div Total;
+          // Prevent division by zero when box is empty
+          if Total > 0 then
+          begin
+            Represented.A := SumA div Total;
+            Represented.R := SumR div Total;
+            Represented.G := SumG div Total;
+            Represented.B := SumB div Total;
+          end
+          else
+          begin
+            Represented.A := 0;
+            Represented.R := 0;
+            Represented.G := 0;
+            Represented.B := 0;
+          end;
           AMin := AMin and ChannelMask;
           RMin := RMin and ChannelMask;
           GMin := GMin and ChannelMask;
@@ -1434,6 +1450,9 @@ var
   ScaleX, ScaleY, X, Y, Xp, Yp: LongInt;
   DstPixel, SrcLine: PByte;
 begin
+  // Validate dimensions to prevent division by zero
+  if (DstWidth <= 0) or (DstHeight <= 0) or (SrcWidth <= 0) or (SrcHeight <= 0) then
+    Exit;
   GetImageFormatInfo(SrcImage.Format, Info);
   Assert(SrcImage.Format = DstImage.Format);
   Assert(not Info.IsSpecial);
@@ -1964,8 +1983,8 @@ var
   SrcInfo, DstInfo: PImageFormatInfo;
   PixFP: TColorFPRec;
 begin
-  SrcInfo := FInfos[SrcFormat];
-  DstInfo := FInfos[DstFormat];
+  SrcInfo := FInfos[Ord(SrcFormat)];
+  DstInfo := FInfos[Ord(DstFormat)];
 
   PixFP := GetPixelFPGeneric(SrcPixel, SrcInfo, SrcPalette);
   SetPixelFPGeneric(DstPixel, DstInfo, DstPalette, PixFP);
@@ -2203,7 +2222,7 @@ end;
 
 function IsImageFormatValid(Format: TImageFormat): Boolean;
 begin
-  Result := FInfos[Format] <> nil;
+  Result := FInfos[Ord(Format)] <> nil;
 end;
 
 const
@@ -4120,8 +4139,8 @@ end;
 
 function GetStdPixelsSize(Format: TImageFormat; Width, Height: Integer): Int64;
 begin
-  if FInfos[Format] <> nil then
-    Result := Int64(Width) * Height * FInfos[Format].BytesPerPixel
+  if FInfos[Ord(Format)] <> nil then
+    Result := Int64(Width) * Height * FInfos[Ord(Format)].BytesPerPixel
   else
     Result := 0;
 end;

@@ -4,7 +4,7 @@ object MainForm: TMainForm
   Top = 405
   Width = 997
   AllowDropFiles = True
-  Caption = 'LCL Imager (Vampyre Imaging Library Demo)'
+  Caption = 'LCL Imager (Dracoola Imaging Library Demo)'
   ClientHeight = 660
   ClientWidth = 997
   Constraints.MinHeight = 240

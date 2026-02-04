@@ -1,5 +1,5 @@
 {
-  Vampyre Imaging Library
+  Dracoola Imaging Library
   by Marek Mauder
   https://github.com/galfar/imaginglib
   https://imaginglib.sourceforge.io
@@ -24,15 +24,6 @@ const
   SFalse = 'False';
 
 type
-{$IF Defined(DELPHI)}
-  {$IF not Defined(UInt32)}
-    UInt32 = Cardinal;
-  {$IFEND}
-  {$IF not Defined(PUInt32)}
-    PUInt32 = ^UInt32;
-  {$IFEND}
-{$IFEND}
-
   TByteArray = array[0..MaxInt - 1] of Byte;
   PByteArray = ^TByteArray;
   TWordArray = array[0..MaxInt div 2 - 1] of Word;
@@ -369,12 +360,12 @@ implementation
 
 uses
 {$IF Defined(MSWINDOWS)}
-  Windows;
-{$ELSEIF Defined(FPC)}
-  Dos, BaseUnix, Unix;
-{$ELSEIF Defined(DELPHI)}
-  Posix.SysTime;
-{$IFEND}
+  Windows,
+{$ENDIF}
+  {$IFDEF UNIX}
+  BaseUnix, Unix,
+  {$ENDIF}
+  Dos;
 
 var
   FloatFormatSettings: TFormatSettings;
@@ -422,15 +413,7 @@ begin
   QueryPerformanceCounter(Time);
   Result := Round(1000000 * InvPerfFrequency * Time);
 end;
-{$ELSEIF Defined(DELPHI)}
-function GetTimeMicroseconds: Int64;
-var
-  Time: TimeVal;
-begin
-  Posix.SysTime.GetTimeOfDay(Time, nil);
-  Result := Int64(Time.tv_sec) * 1000000 + Time.tv_usec;
-end;
-{$ELSEIF Defined(FPC)}
+{$ELSE}
 function GetTimeMicroseconds: Int64;
 var
   TimeVal: TTimeVal;
@@ -438,7 +421,7 @@ begin
   fpGetTimeOfDay(@TimeVal, nil);
   Result := Int64(TimeVal.tv_sec) * 1000000 + TimeVal.tv_usec;
 end;
-{$IFEND}
+{$ENDIF}
 
 function GetTimeMilliseconds: Int64;
 begin
@@ -459,16 +442,10 @@ var
 begin
   SetString(Result, FileName,
     Windows.GetModuleFileName(MainInstance, FileName, SizeOf(FileName)));
-{$ELSEIF Defined(DELPHI)} // Delphi non Win targets
-var
-  FileName: array[0..1024] of Char;
-begin
-  SetString(Result, FileName,
-    System.GetModuleFileName(MainInstance, FileName, SizeOf(FileName)));
 {$ELSE}
 begin
   Result := ExpandFileName(ParamStr(0));
-{$IFEND}
+{$ENDIF}
 end;
 
 function GetAppDir: string;
@@ -645,16 +622,10 @@ begin
   Folders := TStringList.Create;
   Folders.Add(RootDir);
   Files.Clear;
-{$IFDEF DCC}
-  {$WARN SYMBOL_PLATFORM OFF}
-{$ENDIF}
   if Attr = faAnyFile then
     LocAttr := faSysFile or faHidden or faArchive or faReadOnly
   else
     LocAttr := Attr;
-{$IFDEF DCC}
-  {$WARN SYMBOL_PLATFORM ON}
-{$ENDIF}
   // Here's the recursive search for nested folders
   if flRecursive in Options then
     BuildFolderList;
@@ -1141,12 +1112,21 @@ end;
 function MulDiv(Number, Numerator, Denominator: Word): Word;
 {$IF Defined(USE_ASM) and (not Defined(USE_INLINE))}
 asm
+         TEST CX, CX    // Check if Denominator is zero
+         JZ @ZeroDiv
          MUL DX
          DIV CX
+         JMP @Done
+@ZeroDiv:
+         XOR AX, AX     // Return 0 if Denominator is zero
+@Done:
 end;
 {$ELSE}
 begin
-  Result := Number * Numerator div Denominator;
+  if Denominator = 0 then
+    Result := 0
+  else
+    Result := Number * Numerator div Denominator;
 end;
 {$IFEND}
 
@@ -1518,13 +1498,23 @@ procedure ClipStretchBounds(var SrcX, SrcY, SrcWidth, SrcHeight, DstX, DstY,
     Diff: LongInt;
     Scale: Single;
   begin
+    // Validate input sizes to prevent division by zero
+    if (SrcSize <= 0) or (DstSize <= 0) then
+    begin
+      SrcSize := 0;
+      DstSize := 0;
+      Exit;
+    end;
     Scale := DstSize / SrcSize;
     if DstPos < DstClipMin then
     begin
       Diff := DstClipMin - DstPos;
       DstSize := DstSize - Diff;
-      SrcPos := SrcPos + Round(Diff / Scale);
-      SrcSize := SrcSize - Round(Diff / Scale);
+      if Scale <> 0 then
+      begin
+        SrcPos := SrcPos + Round(Diff / Scale);
+        SrcSize := SrcSize - Round(Diff / Scale);
+      end;
       DstPos := DstClipMin;
     end;
     if SrcPos < 0 then
@@ -1538,13 +1528,19 @@ procedure ClipStretchBounds(var SrcX, SrcY, SrcWidth, SrcHeight, DstX, DstY,
     begin
       OldSize := SrcSize;
       SrcSize := SrcClipMax - SrcPos;
-      DstSize := Round(DstSize * (SrcSize / OldSize));
+      if OldSize > 0 then
+        DstSize := Round(DstSize * (SrcSize / OldSize))
+      else
+        DstSize := 0;
     end;
     if DstPos + DstSize > DstClipMax then
     begin
       OldSize := DstSize;
       DstSize := DstClipMax - DstPos;
-      SrcSize := Round(SrcSize * (DstSize / OldSize));
+      if OldSize > 0 then
+        SrcSize := Round(SrcSize * (DstSize / OldSize))
+      else
+        SrcSize := 0;
     end;
   end;
 
@@ -1566,6 +1562,14 @@ begin
   SourceHeight := SourceRect.Bottom - SourceRect.Top;
   TargetWidth := TargetRect.Right - TargetRect.Left;
   TargetHeight := TargetRect.Bottom - TargetRect.Top;
+
+  // Handle edge cases: empty rectangles
+  if (SourceWidth <= 0) or (SourceHeight <= 0) or
+     (TargetWidth <= 0) or (TargetHeight <= 0) then
+  begin
+    Result := TargetRect;
+    Exit;
+  end;
 
   if SourceWidth * TargetHeight < SourceHeight * TargetWidth then
   begin
@@ -1680,18 +1684,7 @@ var
   FmtMsg: string;
 begin
   FmtMsg := Format(Msg, Args);
-{$IFDEF MSWINDOWS}
-  if IsConsole then
-    WriteLn('DebugMsg: ' + FmtMsg)
-  else
-    MessageBox(GetActiveWindow, PChar(FmtMsg), 'DebugMsg', MB_OK);
-{$ENDIF}
-{$IFDEF UNIX}
   WriteLn('DebugMsg: ' + FmtMsg);
-{$ENDIF}
-{$IFDEF MSDOS}
-  WriteLn('DebugMsg: ' + FmtMsg);
-{$ENDIF}
 end;
 
 initialization
@@ -1700,18 +1693,9 @@ initialization
   QueryPerformanceFrequency(PerfFrequency);
   InvPerfFrequency := 1.0 / PerfFrequency;
 {$ENDIF}
-
-{$IF Defined(DELPHI)}
-  {$IF CompilerVersion >= 23}
-  FloatFormatSettings := TFormatSettings.Create('en-US');
-  {$ELSE}
-  GetLocaleFormatSettings(1033, FloatFormatSettings);
-  {$IFEND}
-{$ELSE FPC}
   FloatFormatSettings := DefaultFormatSettings;
   FloatFormatSettings.DecimalSeparator := '.';
   FloatFormatSettings.ThousandSeparator := ',';
-{$IFEND}
 
 {
   File Notes:

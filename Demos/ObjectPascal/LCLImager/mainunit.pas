@@ -1,5 +1,5 @@
 {
-  Vampyre Imaging Library Demo
+  Dracoola Imaging Library Demo
   LCL Imager (ObjectPascal, high level/component sets/canvas, Win32/Linux/macOS)
   tested in Lazarus 2.2.0 (Windows; Linux: Gtk2, Qt; macOS: Carbon, Cocoa)
   written by Marek Mauder
@@ -33,11 +33,11 @@ uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, Variants,
   Menus, ExtCtrls, ExtDlgs, DemoUtils, AboutUnit, ActnList, StdCtrls, ComCtrls,
   PairSplitter, FileUtil,
+  BGRABitmap, BGRABitmapTypes,
 
   ImagingTypes,
   Imaging,
   ImagingClasses,
-  ImagingComponents,
   ImagingCanvases,
   ImagingBinary,
   ImagingColors,
@@ -257,7 +257,7 @@ type
     procedure MenuItem92Click(Sender: TObject);
     procedure TreeImageSelectionChanged(Sender: TObject);
   private
-    FBitmap: TImagingBitmap;
+    FBGRABitmap: TBGRABitmap;
     FImage: TMultiImage;
     FImageCanvas: TImagingCanvas;
     FFileName: string;
@@ -267,6 +267,7 @@ type
     procedure SaveFile(const FileName: string);
     procedure SelectSubImage(Index: LongInt);
     procedure UpdateView(RebuildTree: Boolean);
+    procedure ConvertToBGRA;
     function CheckCanvasFormat: Boolean;
     procedure ApplyConvolution(Kernel: Pointer; Size: LongInt; NeedsBlur: Boolean);
     procedure ApplyPointTransform(Transform: TPointTransform);
@@ -283,7 +284,7 @@ type
   end; 
 
 const
-  SWindowTitle = 'LCL Imager - Vampyre Imaging Library %s Demo';
+  SWindowTitle = 'LCL Imager - Dracoola Imaging Library %s Demo';
   
 var
   MainForm: TMainForm;
@@ -340,11 +341,9 @@ begin
 
   Caption := Format(SWindowTitle, [Imaging.GetVersionStr]) + Platform;
 
-  { Source image and Image's graphic are created and
-    default image is opened.}
+  { Source image and BGRABitmap for display are created }
   FImage := TMultiImage.Create;
-  FBitmap := TImagingBitmap.Create;
-  Image.Picture.Graphic := FBitmap;
+  FBGRABitmap := TBGRABitmap.Create(1, 1);
   FImageCanvas := TImagingCanvas.Create;
 
   { This builds Format submenu containing all possible
@@ -1023,7 +1022,7 @@ end;
 procedure TMainForm.FormDestroy(Sender: TObject);
 begin
   FImageCanvas.Free;
-  FBitmap.Free;
+  FBGRABitmap.Free;
   FImage.Free;
 end;
 
@@ -1224,9 +1223,52 @@ end;
 
 procedure TMainForm.UpdateView(RebuildTree: Boolean);
 begin
-  Image.Picture.Graphic.Assign(FImage);
+  ConvertToBGRA;
+  Image.Picture.Bitmap.Assign(FBGRABitmap.Bitmap);
   if RebuildTree then
     BuildImageTree;
+end;
+
+procedure TMainForm.ConvertToBGRA;
+var
+  TempData: TImageData;
+  X, Y: Integer;
+  SrcPtr: PColor32Rec;
+  DstPtr: PBGRAPixel;
+begin
+  if not FImage.Valid then Exit;
+
+  // Initialize temp data for conversion
+  InitImage(TempData);
+  try
+    // Clone and convert to A8R8G8B8 (32-bit ARGB)
+    CloneImage(FImage.ImageDataPointer^, TempData);
+    ConvertImage(TempData, ifA8R8G8B8);
+
+    // Resize BGRA bitmap
+    FBGRABitmap.SetSize(TempData.Width, TempData.Height);
+
+    // Copy pixels - Dracoola uses ARGB order: B, G, R, A in memory (little-endian)
+    // TBGRAPixel: blue, green, red, alpha - same memory layout
+    SrcPtr := PColor32Rec(TempData.Bits);
+    for Y := 0 to TempData.Height - 1 do
+    begin
+      DstPtr := FBGRABitmap.ScanLine[Y];
+      for X := 0 to TempData.Width - 1 do
+      begin
+        DstPtr^.blue := SrcPtr^.B;
+        DstPtr^.green := SrcPtr^.G;
+        DstPtr^.red := SrcPtr^.R;
+        DstPtr^.alpha := SrcPtr^.A;
+        Inc(SrcPtr);
+        Inc(DstPtr);
+      end;
+    end;
+
+    FBGRABitmap.InvalidateBitmap;
+  finally
+    FreeImage(TempData);
+  end;
 end;
 
 procedure TMainForm.MeasureTime(const Msg: string; const OldTime: Int64);

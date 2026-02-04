@@ -279,7 +279,7 @@ object AboutForm: TAboutForm
     Width = 138
     Alignment = taCenter
     BorderSpacing.Top = 12
-    Caption = 'Vampyre Imaging Library'
+    Caption = 'Dracoola Imaging Library'
     Font.Style = [fsBold]
     ParentFont = False
   end

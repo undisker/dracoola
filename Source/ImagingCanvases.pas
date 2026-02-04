@@ -1,5 +1,5 @@
 {
-  Vampyre Imaging Library
+  Dracoola Imaging Library
   by Marek Mauder
   https://github.com/galfar/imaginglib
   https://imaginglib.sourceforge.io
@@ -731,9 +731,19 @@ end;
 function TransformGamma(const Pixel: TColorFPRec; R, G, B: Single): TColorFPRec;
 begin
   Result.A := Pixel.A;
-  Result.R := Power(Pixel.R, 1.0 / R);
-  Result.G := Power(Pixel.G, 1.0 / G);
-  Result.B := Power(Pixel.B, 1.0 / B);
+  // Power() requires non-negative base for non-integer exponents
+  if Pixel.R > 0 then
+    Result.R := Power(Pixel.R, 1.0 / R)
+  else
+    Result.R := 0.0;
+  if Pixel.G > 0 then
+    Result.G := Power(Pixel.G, 1.0 / G)
+  else
+    Result.G := 0.0;
+  if Pixel.B > 0 then
+    Result.B := Power(Pixel.B, 1.0 / B)
+  else
+    Result.B := 0.0;
 end;
 
 function TransformInvert(const Pixel: TColorFPRec; P1, P2, P3: Single): TColorFPRec;
@@ -753,20 +763,37 @@ begin
 end;
 
 function TransformLevels(const Pixel: TColorFPRec; BlackPoint, WhitePoint, Exp: Single): TColorFPRec;
+var
+  Range, Val: Single;
 begin
   Result.A := Pixel.A;
-  if Pixel.R > BlackPoint then
-    Result.R := Power((Pixel.R - BlackPoint) / (WhitePoint - BlackPoint), Exp)
+  Range := WhitePoint - BlackPoint;
+  // Avoid division by zero and ensure non-negative base for Power()
+  if (Range > 0.0001) then
+  begin
+    Val := (Pixel.R - BlackPoint) / Range;
+    if Val > 0 then
+      Result.R := Power(Val, Exp)
+    else
+      Result.R := 0.0;
+    Val := (Pixel.G - BlackPoint) / Range;
+    if Val > 0 then
+      Result.G := Power(Val, Exp)
+    else
+      Result.G := 0.0;
+    Val := (Pixel.B - BlackPoint) / Range;
+    if Val > 0 then
+      Result.B := Power(Val, Exp)
+    else
+      Result.B := 0.0;
+  end
   else
+  begin
+    // Invalid range, return black
     Result.R := 0.0;
-  if Pixel.G > BlackPoint then
-    Result.G := Power((Pixel.G - BlackPoint) / (WhitePoint - BlackPoint), Exp)
-  else
     Result.G := 0.0;
-  if Pixel.B > BlackPoint then
-    Result.B := Power((Pixel.B - BlackPoint) / (WhitePoint - BlackPoint), Exp)
-  else
     Result.B := 0.0;
+  end;
 end;
 
 function TransformPremultiplyAlpha(const Pixel: TColorFPRec; P1, P2, P3: Single): TColorFPRec;
@@ -1685,8 +1712,12 @@ begin
     begin
       Pixel := FFormatInfo.GetPixelFP(PixPointer, @FFormatInfo, FPData.Palette);
 
-      FFormatInfo.SetPixelFP(PixPointer, @FFormatInfo, FPData.Palette,
-        Transform(Pixel, Param1, Param2, Param3));
+      Pixel := Transform(Pixel, Param1, Param2, Param3);
+      // Clamp pixel values to [0, 1] range to prevent range check errors
+      // when converting to integer formats (contrast, gamma, levels can produce out-of-range values)
+      ClampFloatPixel(Pixel);
+
+      FFormatInfo.SetPixelFP(PixPointer, @FFormatInfo, FPData.Palette, Pixel);
 
       Inc(PixPointer, Bpp);
     end;
@@ -1910,6 +1941,9 @@ begin
   // Clip src and dst rects
   ClipStretchBounds(SrcX, SrcY, SrcWidth, SrcHeight, DestX, DestY, DestWidth, DestHeight,
       FPData.Width, FPData.Height, DestCanvas.ClipRect);
+  // Validate dimensions after clipping to prevent division by zero
+  if (DestWidth <= 0) or (DestHeight <= 0) or (SrcWidth <= 0) or (SrcHeight <= 0) then
+    Exit;
   ScaleX := (SrcWidth shl 16) div DestWidth;
   ScaleY := (SrcHeight shl 16) div DestHeight;
 
