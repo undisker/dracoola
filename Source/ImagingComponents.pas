@@ -17,9 +17,14 @@ unit ImagingComponents;
 
 interface
 
-{ LCL-only version for FreePascal }
+{ LCL-only version for FreePascal.
+  DRACOOLA_NO_LCL lets an LCL-free host (e.g. the Castle Game Engine
+  castle_engine_base package, which links Dracoola as its image backend but
+  must not depend on the LCL) compile this unit as an empty stub. }
 {$IFDEF LCL}
+  {$IFNDEF DRACOOLA_NO_LCL}
   {$DEFINE COMPONENT_SET_LCL}
+  {$ENDIF}
 {$ENDIF}
 
 {$IFNDEF COMPONENT_SET_LCL}

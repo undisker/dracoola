@@ -158,8 +158,13 @@
   {$UNDEF USE_ASM}
 {$IFEND}
 
-{ Component set - LCL only for FreePascal }
+{ Component set - LCL only for FreePascal.
+  DRACOOLA_NO_LCL lets an LCL-free host (e.g. Castle Game Engine's
+  castle_engine_base, which links Dracoola as its image backend) build the
+  Imaging units without dragging in the LCL (ImagingComponents becomes a stub). }
+{$IFNDEF DRACOOLA_NO_LCL}
 {$DEFINE COMPONENT_SET_LCL}
+{$ENDIF}
 
 { More compiler options - Free Pascal specific }
 (* Some options set above (like min enum size) are reset to defaults by setting
