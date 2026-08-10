@@ -162,9 +162,11 @@ begin
     end
     else
     begin
-      // All other colorspaces decompress to RGB
+      // All other colorspaces decompress to 24-bit color. Vampyre's ifR8G8B8
+      // stores B,G,R in memory (TColor24Rec), so TurboJPEG must emit BGR -
+      // TJPF_RGB here swaps red and blue in every consumer.
       Images[0].Format := ifR8G8B8;
-      PixFmt := TJPF_RGB;
+      PixFmt := TJPF_BGR;
     end;
 
     // Allocate image
@@ -182,8 +184,9 @@ begin
       Col32 := Images[0].Bits;
       for I := 0 to Width * Height - 1 do
       begin
-        // TurboJPEG returns CMYK in order C, M, Y, K stored in R, G, B, A
-        CMYKToRGB(255 - Col32.R, 255 - Col32.G, 255 - Col32.B, 255 - Col32.A,
+        // TurboJPEG emits bytes C,M,Y,K; through TColor32Rec (memory B,G,R,A)
+        // that reads back as B=C, G=M, R=Y, A=K.
+        CMYKToRGB(255 - Col32.B, 255 - Col32.G, 255 - Col32.R, 255 - Col32.A,
           Col32.R, Col32.G, Col32.B);
         Col32.A := 255;
         Inc(Col32);
@@ -247,7 +250,9 @@ begin
       end
       else
       begin
-        PixFmt := TJPF_RGB;
+        // ifR8G8B8 memory is B,G,R (see LoadData) - compress as BGR or the
+        // written file has red and blue swapped.
+        PixFmt := TJPF_BGR;
         Subsamp := TJSAMP_420; // 4:2:0 subsampling for best compression
       end;
 
