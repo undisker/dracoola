@@ -462,6 +462,9 @@ type
   end;
 
 { Library loading and initialization }
+{ Why the libjpeg library could not be loaded - '' while it is fine. }
+function JpegLoadError: string;
+
 function LoadJpegLibrary: Boolean;
 procedure UnloadJpegLibrary;
 function IsJpegLibraryLoaded: Boolean;
@@ -496,10 +499,11 @@ procedure jpeg_destroy(cinfo: j_common_ptr); cdecl;
 implementation
 
 uses
-  dynlibs;
+  dynlibs{$IFDEF MSWINDOWS}, Windows{$ENDIF};
 
 var
   JpegLibHandle: TLibHandle = NilHandle;
+  GJpegLoadError: string = '';
 
   { Function pointers }
   _jpeg_std_error: function(var err: jpeg_error_mgr): jpeg_error_mgr_ptr; cdecl;
@@ -522,6 +526,8 @@ var
   _jpeg_resync_to_restart: function(cinfo: j_decompress_ptr; desired: Integer): CBoolean; cdecl;
   _jpeg_destroy: procedure(cinfo: j_common_ptr); cdecl;
 
+{$I ../libloaderror.inc}
+
 function LoadJpegLibrary: Boolean;
 begin
   if JpegLibHandle <> NilHandle then
@@ -533,6 +539,7 @@ begin
   JpegLibHandle := LoadLibrary(LIBJPEG_LIB);
   if JpegLibHandle = NilHandle then
   begin
+    GJpegLoadError := DescribeLibLoadFailure(LIBJPEG_LIB);
     Result := False;
     Exit;
   end;
@@ -741,5 +748,10 @@ initialization
 
 finalization
   UnloadJpegLibrary;
+
+function JpegLoadError: string;
+begin
+  Result := GJpegLoadError;
+end;
 
 end.
