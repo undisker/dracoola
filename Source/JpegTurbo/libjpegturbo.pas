@@ -743,15 +743,16 @@ begin
     _jpeg_destroy(cinfo);
 end;
 
+function JpegLoadError: string;
+begin
+  Result := GJpegLoadError;
+end;
+
 initialization
   LoadJpegLibrary;
 
 finalization
   UnloadJpegLibrary;
 
-function JpegLoadError: string;
-begin
-  Result := GJpegLoadError;
-end;
 
 end.

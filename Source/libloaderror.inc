@@ -7,11 +7,13 @@
   its own Last*LoadError string using the function below, so the host
   application can name the file and the reason.
 
-  Include inside the implementation section of a binding unit:
+  Include it from the implementation section of a binding unit with an $I
+  directive naming this file, relative to the including unit. See the three
+  bindings in Source/JpegTurbo and Source/ZLib for the exact line - it cannot be
+  written out here, because a directive inside a brace comment ends that comment
+  at its own closing brace and the rest of this text would be parsed as code.
 
-      {$I ../libloaderror.inc}
-
-  Requires SysUtils in scope, and the Windows unit on Windows (for GetLastError).
+  Requires SysUtils in scope, and the Windows unit on Windows for GetLastError.
   Declared local to each including unit on purpose - these bindings are meant to
   stay individually self-contained. }
 

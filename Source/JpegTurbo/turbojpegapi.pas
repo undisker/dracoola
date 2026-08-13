@@ -464,15 +464,16 @@ begin
   Result := (dimension * scalingFactor.num + scalingFactor.denom - 1) div scalingFactor.denom;
 end;
 
+function TurboJpegLoadError: string;
+begin
+  Result := GTurboJpegLoadError;
+end;
+
 initialization
   LoadTurboJpegLibrary;
 
 finalization
   UnloadTurboJpegLibrary;
 
-function TurboJpegLoadError: string;
-begin
-  Result := GTurboJpegLoadError;
-end;
 
 end.

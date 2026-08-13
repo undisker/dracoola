@@ -737,15 +737,16 @@ begin
   Result := inflateInit2_(strm, windowBits, ZLIB_VERSION, SizeOf(z_stream));
 end;
 
+function ZlibLoadError: string;
+begin
+  Result := GZlibLoadError;
+end;
+
 initialization
   LoadZlibLibrary;
 
 finalization
   UnloadZlibLibrary;
 
-function ZlibLoadError: string;
-begin
-  Result := GZlibLoadError;
-end;
 
 end.
