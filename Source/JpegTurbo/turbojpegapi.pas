@@ -173,6 +173,10 @@ const
   );
 
 { Library loading and initialization }
+{ Why the TurboJPEG library could not be loaded - '' while it is fine. Named
+  file plus the operating-system reason, for reporting to the user. }
+function TurboJpegLoadError: string;
+
 function LoadTurboJpegLibrary: Boolean;
 procedure UnloadTurboJpegLibrary;
 function IsTurboJpegLibraryLoaded: Boolean;
@@ -232,10 +236,11 @@ function TJScaled(dimension: Integer; scalingFactor: tjscalingfactor): Integer; 
 implementation
 
 uses
-  dynlibs;
+  dynlibs{$IFDEF MSWINDOWS}, Windows{$ENDIF};
 
 var
   TurboJpegLibHandle: TLibHandle = NilHandle;
+  GTurboJpegLoadError: string = '';
 
   { Function pointers }
   _tj3Init: function(initType: Integer): tjhandle; cdecl;
@@ -258,6 +263,9 @@ var
     jpegSize: NativeUInt; dstBuf: PByte; pitch: Integer;
     pixelFormat: Integer): Integer; cdecl;
 
+
+{$I ../libloaderror.inc}
+
 function LoadTurboJpegLibrary: Boolean;
 begin
   if TurboJpegLibHandle <> NilHandle then
@@ -269,6 +277,9 @@ begin
   TurboJpegLibHandle := LoadLibrary(TURBOJPEG_LIB);
   if TurboJpegLibHandle = NilHandle then
   begin
+    { Do not fail mute: JPEG decoding disappearing with no message anywhere is
+      indistinguishable from a corrupt file to the user. }
+    GTurboJpegLoadError := DescribeLibLoadFailure(TURBOJPEG_LIB);
     Result := False;
     Exit;
   end;
@@ -458,5 +469,10 @@ initialization
 
 finalization
   UnloadTurboJpegLibrary;
+
+function TurboJpegLoadError: string;
+begin
+  Result := GTurboJpegLoadError;
+end;
 
 end.

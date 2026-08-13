@@ -146,6 +146,10 @@ type
   gz_headerp = ^gz_header;
 
 { Library loading and initialization }
+{ Why no zlib could be loaded - '' while one is available. Note that a failure
+  here is usually harmless: callers fall back to the compiled-in paszlib. }
+function ZlibLoadError: string;
+
 function LoadZlibLibrary: Boolean;
 procedure UnloadZlibLibrary;
 function IsZlibLibraryLoaded: Boolean;
@@ -219,10 +223,11 @@ function inflateInit2(var strm: z_stream; windowBits: Integer): Integer;
 implementation
 
 uses
-  dynlibs;
+  dynlibs{$IFDEF MSWINDOWS}, Windows{$ENDIF};
 
 var
   ZlibLibHandle: TLibHandle = NilHandle;
+  GZlibLoadError: string = '';
   UsingZlibNG: Boolean = False;
 
   { Function pointers }
@@ -353,6 +358,8 @@ begin
             Assigned(_inflateEnd);
 end;
 
+{$I ../libloaderror.inc}
+
 function LoadZlibLibrary: Boolean;
 begin
   if ZlibLibHandle <> NilHandle then
@@ -389,6 +396,9 @@ begin
     ZlibLibHandle := NilHandle;
   end;
 
+  { Neither the zlib-ng nor the compat name loaded: record why, naming the
+    compat library (the one expected to ship beside the program). }
+  GZlibLoadError := DescribeLibLoadFailure(ZLIB_LIB_COMPAT);
   Result := False;
   ClearFunctionPointers;
 end;
@@ -732,5 +742,10 @@ initialization
 
 finalization
   UnloadZlibLibrary;
+
+function ZlibLoadError: string;
+begin
+  Result := GZlibLoadError;
+end;
 
 end.
