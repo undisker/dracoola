@@ -745,6 +745,11 @@ begin
   if TiffLibHandle = 0 then
   begin
     TiffLibHandle := LoadLibrary(SLibName);
+  {$IF Defined(MSWINDOWS)}
+    { the prebuilt DLL in libs/win64 is named plain 'tiff.dll' }
+    if TiffLibHandle = 0 then
+      TiffLibHandle := LoadLibrary('tiff.dll');
+  {$IFEND}
   {$IF Defined(DARWIN)}
     if TiffLibHandle = 0 then
       TiffLibHandle := LoadLibrary('@executable_path/' + SLibName);
