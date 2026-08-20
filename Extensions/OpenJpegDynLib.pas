@@ -230,6 +230,13 @@ type
     m_verbose: OPJ_BOOL;
     tile_index: OPJ_UINT32;
     nb_tile_to_decode: OPJ_UINT32;
+    { JPWL fields are UNCONDITIONAL in the official openjpeg.h - omitting
+      them made this record 12 bytes short, so the DLL's
+      opj_set_default_decoder_parameters wrote past the caller's stack
+      local and opj_setup_decoder then failed on every file. }
+    jpwl_correct: OPJ_BOOL;
+    jpwl_exp_comps: Integer;
+    jpwl_max_tiles: Integer;
     flags: OPJ_UINT32;
   end;
   opj_dparameters_t = opj_dparameters;
