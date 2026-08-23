@@ -94,7 +94,10 @@
   {$IOCHECKS ON}
   {$OVERFLOWCHECKS ON}
   {$S+}
-  {$CHECKPOINTER ON}
+  { $CHECKPOINTER is deliberately NOT enabled: it is unsupported on several
+    FPC targets and fails the build outright on FPC trunk
+    ("Directive CHECKPOINTER+ is not supported on this target").
+    Upstream removed it for the same reason - galfar/imaginglib 7358064. }
 {$ELSEIF Defined(IMAGING_RELEASE)}
   {$ASSERTIONS OFF}
   {$DEBUGINFO OFF}

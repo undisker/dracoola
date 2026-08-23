@@ -1458,11 +1458,13 @@ end;
 function FlipImage(var Image: TImageData): Boolean;
 var
   P1, P2, Buff: Pointer;
-  WidthBytes, I: LongInt;
+  I: LongInt;
+  WidthBytes: PtrInt;
   OldFmt: TImageFormat;
 begin
   Result := False;
   OldFmt := Image.Format;
+
   if TestImage(Image) then
   with Image do
   try
@@ -1475,8 +1477,8 @@ begin
       // Swap all scanlines of image
       for I := 0 to Height div 2 - 1 do
       begin
-        P1 := @PByteArray(Bits)[I * WidthBytes];
-        P2 := @PByteArray(Bits)[(Height - I - 1) * WidthBytes];
+        P1 := PBuffer(Bits) + I * WidthBytes;
+        P2 := PBuffer(Bits) + (Height - I - 1) * WidthBytes;
         Move(P1^, Buff^, WidthBytes);
         Move(P2^, P1^, WidthBytes);
         Move(Buff^, P2^, WidthBytes);
@@ -1496,9 +1498,10 @@ end;
 
 function MirrorImage(var Image: TImageData): Boolean;
 var
-  Scanline: PByte;
+  Scanline: PBuffer;
   Buff: TColorFPRec;
-  Bpp, Y, X, WidthDiv2, WidthBytes, XLeft, XRight: LongInt;
+  Bpp, Y, X, WidthDiv2, XLeft, XRight: LongInt;
+  WidthBytes: PtrInt;
   OldFmt: TImageFormat;
 begin
   Result := False;
@@ -1516,15 +1519,14 @@ begin
     // Mirror all pixels on each scanline of image
     for Y := 0 to Height - 1 do
     begin
-      Scanline := @PByteArray(Bits)[Y * WidthBytes];
+      Scanline := @PBuffer(Bits)[Y * WidthBytes];
       XLeft := 0;
       XRight := (Width - 1) * Bpp;
       for X := 0 to WidthDiv2 - 1 do
       begin
-        CopyPixel(@PByteArray(Scanline)[XLeft], @Buff, Bpp);
-        CopyPixel(@PByteArray(Scanline)[XRight],
-          @PByteArray(Scanline)[XLeft], Bpp);
-        CopyPixel(@Buff, @PByteArray(Scanline)[XRight], Bpp);
+        CopyPixel(@Scanline[XLeft], @Buff, Bpp);
+        CopyPixel(@Scanline[XRight], @Scanline[XLeft], Bpp);
+        CopyPixel(@Buff, @Scanline[XRight], Bpp);
         Inc(XLeft, Bpp);
         Dec(XRight, Bpp);
       end;
@@ -1674,7 +1676,8 @@ function ReduceColors(var Image: TImageData; MaxColors: LongInt): Boolean;
 var
   TmpInfo: TImageFormatInfo;
   Data, Index: PWord;
-  I, NumPixels: LongInt;
+  I: LongInt;
+  NumPixels: Int64;
   Pal: PPalette32;
   Col:PColor32Rec;
   OldFmt: TImageFormat;
@@ -1689,9 +1692,9 @@ begin
     FillChar(TmpInfo, SizeOf(TmpInfo), 0);
     TmpInfo.PaletteEntries := MaxColors;
     TmpInfo.BytesPerPixel := 2;
-    NumPixels := Width * Height;
-    GetMem(Data, NumPixels * TmpInfo.BytesPerPixel);
-    GetMem(Pal, MaxColors * SizeOf(TColor32Rec));
+    NumPixels := Int64(Width) * Height;
+    Data := AllocMem(NumPixels * TmpInfo.BytesPerPixel);
+    Pal := AllocMem(MaxColors * SizeOf(TColor32Rec));
     ConvertImage(Image, ifA8R8G8B8);
     // We use median cut algorithm to create reduced palette and to
     // fill Data with indices to this palette
@@ -1830,9 +1833,9 @@ begin
     PColor := CloneARGB.Bits;
 
     // For every pixel of ARGB clone we find closest color in
-    // given palette and assign its index to resulting image's pixel
-    // procedure used here is very slow but simple and memory usage friendly
-    // (contrary to other methods)
+    // given palette and assign its index to resulting image's pixel.
+    // Procedure used here is very slow but simple and memory usage friendly
+    // (contrary to other methods).
     for I := 0 to Image.Width * Image.Height - 1 do
     begin
       PIndex^ := Byte(FindNearestColor(Image.Palette, MaxEntries, PColor^));
@@ -1868,7 +1871,7 @@ begin
     if Info.IsSpecial then
       ConvertImage(Image, ifDefault);
 
-    // We compute make sure that chunks are not larger than source image or negative
+    // We make sure that chunks are not larger than source image or negative
     ChunkWidth := ClampInt(ChunkWidth, 0, Image.Width);
     ChunkHeight := ClampInt(ChunkHeight, 0, Image.Height);
     // Number of chunks along X and Y axes is computed
@@ -1905,7 +1908,7 @@ begin
           CopyRect(Image, X * ChunkWidth, Y * ChunkHeight, XTrunc, YTrunc,
             Chunks[Y * XChunks + X], 0, 0);
         end;
-        
+
         // If source image is in indexed format we copy its palette to chunk
         if Info.IsIndexed then
         begin
@@ -2011,11 +2014,11 @@ var
   var
     I, J, XPos: Integer;
     PixSrc, PixLeft, PixOldLeft: TColor32Rec;
-    LineDst: PByteArray;
+    LineDst: PBuffer;
     SrcPtr: PColor32;
   begin
-    SrcPtr := @PByteArray(Src.Bits)[Row * Src.Width * Bpp];
-    LineDst := @PByteArray(Dst.Bits)[Row * Dst.Width * Bpp];
+    SrcPtr := @PBuffer(Src.Bits)[PtrInt(Row) * Src.Width * Bpp];
+    LineDst := @PBuffer(Dst.Bits)[PtrInt(Row) * Dst.Width * Bpp];
     PixOldLeft.Color := 0;
 
     for I := 0 to Src.Width - 1 do
@@ -2046,7 +2049,7 @@ var
     PixSrc, PixLeft, PixOldLeft: TColor32Rec;
     SrcPtr: PByte;
   begin
-    SrcPtr := @PByteArray(Src.Bits)[Col * Bpp];
+    SrcPtr := @PBuffer(Src.Bits)[Col * Bpp];
     PixOldLeft.Color := 0;
 
     for I := 0 to Src.Height - 1 do
@@ -2060,7 +2063,7 @@ var
       begin
         for J := 0 to Bpp - 1 do
           PixSrc.Channels[J] := ClampToByte(PixSrc.Channels[J] - (PixLeft.Channels[J] - PixOldLeft.Channels[J]));
-        CopyPixel(@PixSrc, @PByteArray(Dst.Bits)[(YPos * Dst.Width + Col) * Bpp], Bpp);
+        CopyPixel(@PixSrc, @PBuffer(Dst.Bits)[(PtrInt(YPos) * Dst.Width + Col) * Bpp], Bpp);
       end;
       PixOldLeft := PixLeft;
       Inc(SrcPtr, Src.Width * Bpp);
@@ -2068,7 +2071,7 @@ var
 
     YPos := Src.Height + Offset;
     if YPos < Dst.Height then
-      CopyPixel(@PixOldLeft, @PByteArray(Dst.Bits)[(YPos * Dst.Width + Col) * Bpp], Bpp);
+      CopyPixel(@PixOldLeft, @PBuffer(Dst.Bits)[(PtrInt(YPos) * Dst.Width + Col) * Bpp], Bpp);
   end;
 
   procedure Rotate45(var Image: TImageData; Angle: Single);
@@ -2150,7 +2153,8 @@ var
   procedure RotateMul90(var Image: TImageData; Angle: Integer);
   var
     RotImage: TImageData;
-    X, Y, BytesPerPixel: Integer;
+    X, Y: Integer;
+    BytesPerPixel: PtrInt;
     RotPix, Pix: PByte;
   begin
     InitImage(RotImage);
@@ -2167,7 +2171,7 @@ var
         begin
           for Y := 0 to RotImage.Height - 1 do
           begin
-            Pix := @PByteArray(Image.Bits)[(Image.Width - Y - 1) * BytesPerPixel];
+            Pix := @PBuffer(Image.Bits)[(Image.Width - Y - 1) * BytesPerPixel];
             for X := 0 to RotImage.Width - 1 do
             begin
               CopyPixel(Pix, RotPix, BytesPerPixel);
@@ -2178,7 +2182,7 @@ var
         end;
       180:
         begin
-          Pix := @PByteArray(Image.Bits)[((Image.Height - 1) * Image.Width +
+          Pix := @PBuffer(Image.Bits)[((Image.Height - 1) * Image.Width +
             (Image.Width - 1)) * BytesPerPixel];
           for Y := 0 to RotImage.Height - 1 do
             for X := 0 to RotImage.Width - 1 do
@@ -2192,7 +2196,7 @@ var
         begin
           for Y := 0 to RotImage.Height - 1 do
           begin
-            Pix := @PByteArray(Image.Bits)[((Image.Height - 1) * Image.Width + Y) * BytesPerPixel];
+            Pix := @PBuffer(Image.Bits)[((Image.Height - 1) * Image.Width + Y) * BytesPerPixel];
             for X := 0 to RotImage.Width - 1 do
             begin
               CopyPixel(Pix, RotPix, BytesPerPixel);
@@ -2252,8 +2256,9 @@ end;
 procedure RotateImageMul90(var Image: TImageData; AngleDeg: Integer);
 var
   RotImage: TImageData;
-  X, Y, BytesPerPixel: Integer;
+  X, Y: Integer;
   RotPix, Pix: PByte;
+  BytesPerPixel: PtrInt;
 begin
   if TestImage(Image) then
   try
@@ -2283,7 +2288,7 @@ begin
         begin
           for Y := 0 to RotImage.Height - 1 do
           begin
-            Pix := @PByteArray(Image.Bits)[(Image.Width - Y - 1) * BytesPerPixel];
+            Pix := @PBuffer(Image.Bits)[(Image.Width - Y - 1) * BytesPerPixel];
             for X := 0 to RotImage.Width - 1 do
             begin
               CopyPixel(Pix, RotPix, BytesPerPixel);
@@ -2294,7 +2299,7 @@ begin
         end;
       180:
         begin
-          Pix := @PByteArray(Image.Bits)[((Image.Height - 1) * Image.Width +
+          Pix := @PBuffer(Image.Bits)[((Image.Height - 1) * Image.Width +
             (Image.Width - 1)) * BytesPerPixel];
           for Y := 0 to RotImage.Height - 1 do
             for X := 0 to RotImage.Width - 1 do
@@ -2308,7 +2313,7 @@ begin
         begin
           for Y := 0 to RotImage.Height - 1 do
           begin
-            Pix := @PByteArray(Image.Bits)[((Image.Height - 1) * Image.Width + Y) * BytesPerPixel];
+            Pix := @PBuffer(Image.Bits)[((Image.Height - 1) * Image.Width + Y) * BytesPerPixel];
             for X := 0 to RotImage.Width - 1 do
             begin
               CopyPixel(Pix, RotPix, BytesPerPixel);
@@ -2334,7 +2339,8 @@ function CopyRect(const SrcImage: TImageData; SrcX, SrcY, Width, Height: LongInt
   var DstImage: TImageData; DstX, DstY: LongInt): Boolean;
 var
   Info: PImageFormatInfo;
-  I, SrcWidthBytes, DstWidthBytes, MoveBytes: LongInt;
+  I, MoveBytes: LongInt;
+  SrcWidthBytes, DstWidthBytes: PtrInt;
   SrcPointer, DstPointer: PByte;
   WorkImage: TImageData;
   OldFormat: TImageFormat;
@@ -2369,11 +2375,9 @@ begin
 
       MoveBytes := Width * Info.BytesPerPixel;
       DstWidthBytes := DstImage.Width * Info.BytesPerPixel;
-      DstPointer := @PByteArray(DstImage.Bits)[DstY * DstWidthBytes +
-        DstX * Info.BytesPerPixel];
+      DstPointer := @PBuffer(DstImage.Bits)[DstY * DstWidthBytes + DstX * Info.BytesPerPixel];
       SrcWidthBytes := WorkImage.Width * Info.BytesPerPixel;
-      SrcPointer := @PByteArray(WorkImage.Bits)[SrcY * SrcWidthBytes +
-        SrcX * Info.BytesPerPixel];
+      SrcPointer := @PBuffer(WorkImage.Bits)[SrcY * SrcWidthBytes + SrcX * Info.BytesPerPixel];
 
       for I := 0 to Height - 1 do
       begin
@@ -2399,7 +2403,8 @@ function FillRect(var Image: TImageData; X, Y, Width, Height: LongInt;
   FillColor: Pointer): Boolean;
 var
   Info: PImageFormatInfo;
-  I, J, ImageWidthBytes, RectWidthBytes, Bpp: Longint;
+  I, J, RectWidthBytes, Bpp: Integer;
+  ImageWidthBytes: PtrInt;
   LinePointer, PixPointer: PByte;
   OldFmt: TImageFormat;
 begin
@@ -2418,7 +2423,7 @@ begin
       Bpp := Info.BytesPerPixel;
       ImageWidthBytes := Image.Width * Bpp;
       RectWidthBytes := Width * Bpp;
-      LinePointer := @PByteArray(Image.Bits)[Y * ImageWidthBytes + X * Bpp];
+      LinePointer := @PBuffer(Image.Bits)[Y * ImageWidthBytes + X * Bpp];
 
       for I := 0 to Height - 1 do
       begin
@@ -2451,7 +2456,8 @@ function ReplaceColor(var Image: TImageData; X, Y, Width, Height: LongInt;
   OldColor, NewColor: Pointer): Boolean;
 var
   Info: PImageFormatInfo;
-  I, J, WidthBytes, Bpp: Longint;
+  I, J, Bpp: Integer;
+  WidthBytes: PtrInt;
   LinePointer, PixPointer: PByte;
   OldFmt: TImageFormat;
 begin
@@ -2470,7 +2476,7 @@ begin
       Info := ImageFormatInfos[Ord(Image.Format)];
       Bpp := Info.BytesPerPixel;
       WidthBytes := Image.Width * Bpp;
-      LinePointer := @PByteArray(Image.Bits)[Y * WidthBytes + X * Bpp];
+      LinePointer := @PBuffer(Image.Bits)[Y * WidthBytes + X * Bpp];
 
       for I := 0 to Height - 1 do
       begin
@@ -2580,7 +2586,7 @@ var
 begin
   Assert(Pixel <> nil);
   BytesPerPixel := ImageFormatInfos[Ord(Image.Format)].BytesPerPixel;
-  CopyPixel(@PByteArray(Image.Bits)[(Y * Image.Width + X) * BytesPerPixel],
+  CopyPixel(@PBuffer(Image.Bits)[(Y * PtrInt(Image.Width) + X) * BytesPerPixel],
     Pixel, BytesPerPixel);
 end;
 
@@ -2590,7 +2596,7 @@ var
 begin
   Assert(Pixel <> nil);
   BytesPerPixel := ImageFormatInfos[Ord(Image.Format)].BytesPerPixel;
-  CopyPixel(Pixel, @PByteArray(Image.Bits)[(Y * Image.Width + X) * BytesPerPixel],
+  CopyPixel(Pixel, @PBuffer(Image.Bits)[(Y * PtrInt(Image.Width) + X) * BytesPerPixel],
     BytesPerPixel);
 end;
 
@@ -2600,7 +2606,7 @@ var
   Data: PByte;
 begin
   Info := ImageFormatInfos[Ord(Image.Format)];
-  Data := @PByteArray(Image.Bits)[(Y * Image.Width + X) * Info.BytesPerPixel];
+  Data := @PBuffer(Image.Bits)[(Y * PtrInt(Image.Width) + X) * Info.BytesPerPixel];
   Result := GetPixel32Generic(Data, Info, Image.Palette);
 end;
 
@@ -2610,7 +2616,7 @@ var
   Data: PByte;
 begin
   Info := ImageFormatInfos[Ord(Image.Format)];
-  Data := @PByteArray(Image.Bits)[(Y * Image.Width + X) * Info.BytesPerPixel];
+  Data := @PBuffer(Image.Bits)[(Y * PtrInt(Image.Width) + X) * Info.BytesPerPixel];
   SetPixel32Generic(Data, Info, Image.Palette, Color);
 end;
 
@@ -2620,7 +2626,7 @@ var
   Data: PByte;
 begin
   Info := ImageFormatInfos[Ord(Image.Format)];
-  Data := @PByteArray(Image.Bits)[(Y * Image.Width + X) * Info.BytesPerPixel];
+  Data := @PBuffer(Image.Bits)[(Y * PtrInt(Image.Width) + X) * Info.BytesPerPixel];
   Result := GetPixelFPGeneric(Data, Info, Image.Palette);
 end;
 
@@ -2630,7 +2636,7 @@ var
   Data: PByte;
 begin
   Info := ImageFormatInfos[Ord(Image.Format)];
-  Data := @PByteArray(Image.Bits)[(Y * Image.Width + X) * Info.BytesPerPixel];
+  Data := @PBuffer(Image.Bits)[(Y * PtrInt(Image.Width) + X) * Info.BytesPerPixel];
   SetPixelFPGeneric(Data, Info, Image.Palette, Color);
 end;
 
@@ -2858,7 +2864,8 @@ end;
 procedure ReadRawImage(Handle: TImagingHandle;  Width, Height: Integer;
   Format: TImageFormat; var Image: TImageData; const Offset: Int64; RowLength: Integer);
 var
-  WidthBytes, I: Integer;
+  I: Integer;
+  WidthBytes: PtrInt;
   Info: PImageFormatInfo;
 begin
   Info := ImageFormatInfos[Ord(Format)];
@@ -2875,7 +2882,7 @@ begin
   // Read scanlines from input
   for I := 0 to Height - 1 do
   begin
-    IO.Read(Handle, @PByteArray(Image.Bits)[I * WidthBytes], WidthBytes);
+    IO.Read(Handle, @PBuffer(Image.Bits)[I * WidthBytes], WidthBytes);
     IO.Seek(Handle, RowLength - WidthBytes, smFromCurrent);
   end;
 end;
@@ -2935,7 +2942,8 @@ end;
 procedure ReadRawImageRect(Data: Pointer; Left, Top, Width, Height: Integer;
   var Image: TImageData; const Offset: Int64; RowLength: Integer);
 var
-  DestScanBytes, RectBytes, I: Integer;
+  RectBytes, I: Integer;
+  DestScanBytes: PtrInt;
   Info: PImageFormatInfo;
   Src, Dest: PByte;
 begin
@@ -2950,7 +2958,7 @@ begin
     RowLength := RectBytes;
 
   Src := Data;
-  Dest := @PByteArray(Image.Bits)[Top * DestScanBytes + Info.GetPixelsSize(Info.Format, Left, 1)];
+  Dest := @PBuffer(Image.Bits)[Top * DestScanBytes + Info.GetPixelsSize(Info.Format, Left, 1)];
   // Move past the header
   Inc(Src, Offset);
 
@@ -2966,7 +2974,8 @@ end;
 procedure WriteRawImage(Handle: TImagingHandle; const Image: TImageData;
   const Offset: Int64; RowLength: Integer);
 var
-  WidthBytes, I: Integer;
+  I: Integer;
+  WidthBytes: PtrInt;
   Info: PImageFormatInfo;
 begin
   Info := ImageFormatInfos[Ord(Image.Format)];
@@ -2979,7 +2988,7 @@ begin
   // Write scanlines to output
   for I := 0 to Image.Height - 1 do
   begin
-    IO.Write(Handle, @PByteArray(Image.Bits)[I * WidthBytes], WidthBytes);
+    IO.Write(Handle, @PBuffer(Image.Bits)[I * WidthBytes], WidthBytes);
     IO.Seek(Handle, RowLength - WidthBytes, smFromCurrent);
   end;
 end;
@@ -3037,7 +3046,8 @@ end;
 procedure WriteRawImageRect(Data: Pointer; Left, Top, Width, Height: Integer;
   const Image: TImageData; const Offset: Int64; RowLength: Integer);
 var
-  SrcScanBytes, RectBytes, I: Integer;
+  RectBytes, I: Integer;
+  SrcScanBytes: PtrInt;
   Info: PImageFormatInfo;
   Src, Dest: PByte;
 begin
@@ -3051,7 +3061,7 @@ begin
   if RowLength = 0 then
     RowLength := RectBytes;
 
-  Src := @PByteArray(Image.Bits)[Top * SrcScanBytes + Info.GetPixelsSize(Info.Format, Left, 1)];
+  Src := @PBuffer(Image.Bits)[Top * SrcScanBytes + Info.GetPixelsSize(Info.Format, Left, 1)];
   Dest := Data;
   // Move past the header
   Inc(Dest, Offset);
