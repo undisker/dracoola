@@ -59,6 +59,14 @@ const
     It is number in range 1..100. 1 means small/ugly file,
     100 means large/nice file. Accessible trough ImagingTiffJpegQuality option.}
   ImagingTiffJpegQuality             = 66;
+
+  { Controls writing of BigTIFF files. Default is IfNeeded - not much software
+    can open BigTIFF, so use it only when needed. Values:
+    - IfNeeded(0) writes BigTIFF only when the file size for sure exceeds
+      the classic TIFF 4 GiB limit (can only be assured for uncompressed TIFFs).
+    - IfSafer(1) also uses BigTIFF when compression makes the final size uncertain.
+    - Always(2) always writes BigTIFF files. }
+  ImagingTiffBigTiffWriteMode        = 67;
   { If enabled image data is saved as layer of PSD file. This is required
     to get proper transparency when opened in Photoshop for images with
     alpha data (will be opened with one layer, RGB color channels, and transparency).

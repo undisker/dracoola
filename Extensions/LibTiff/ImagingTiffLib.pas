@@ -146,6 +146,58 @@ begin
   LastError := string(Module + ': ' + Message);
 end;
 
+{ Chooses between classic TIFF ('w') and BigTIFF ('w8'). BigTIFF lifts the
+  4 GiB limit that the classic format's 32-bit offsets impose, at the cost of
+  much narrower reader support - hence the default of writing it only when the
+  size is certain to require it. Upstream: galfar/imaginglib #52 / #38. }
+function DecideOpenMode(const Images: TDynImageDataArray;
+  FirstIndex, LastIndex: Integer; Compression, BigTiffWriteMode: Integer): PAnsiChar;
+const
+  { The exact byte count beyond which libtiff cannot represent an offset in
+    classic mode. A classic TIFF's total size can still exceed this - think a
+    2 GB strip starting at the last representable offset. }
+  ClassicTiffMaxFileSize: Int64 = Int64(4) * 1024 * 1024 * 1024; // 4 GiB
+
+  function AddTiffOverhead(const Size: Int64): Int64;
+  begin
+    // Allowance for IFD/tag/header overhead - 8K covers a lot of metadata per page.
+    Result := Size + Int64(Length(Images)) * 8192;
+  end;
+
+var
+  I: Integer;
+  RawTotal, EstimatedTotal: Int64;
+begin
+  if BigTiffWriteMode = TiffBigTiffWriteModeAlways then
+    Exit('w8');
+
+  RawTotal := 0;
+  for I := FirstIndex to LastIndex do
+    Inc(RawTotal, Images[I].Size);
+
+  EstimatedTotal := AddTiffOverhead(RawTotal);
+  if (Compression = TiffCompressionOptionNone) and (EstimatedTotal > ClassicTiffMaxFileSize) then
+  begin
+    // Uncompressed and already over: certain, so IfNeeded and IfSafer both act.
+    Exit('w8');
+  end;
+
+  if BigTiffWriteMode = TiffBigTiffWriteModeIfSafer then
+  begin
+    // Conservative guesses: JPEG assumed to reduce ~3x, everything else assumed
+    // to be effectively incompressible.
+    if Compression = TiffCompressionOptionJpeg then
+      EstimatedTotal := Trunc(RawTotal / 3.0)
+    else
+      EstimatedTotal := Trunc(RawTotal * 1.1);
+
+    if EstimatedTotal > ClassicTiffMaxFileSize then
+      Exit('w8');
+  end;
+
+  Result := 'w';  // Classic TIFF
+end;
+
 {
   TTiffFileFormat implementation
 }
@@ -463,7 +515,7 @@ begin
   // Set up IO wrapper and open TIFF
   IOWrapper.IO := GetIO;
   IOWrapper.Handle := Handle;
-  OpenMode := 'w';
+  OpenMode := DecideOpenMode(Images, FFirstIdx, FLastIdx, FCompression, FBigTiffWriteMode);
 
   Tiff := TIFFClientOpen('LibTIFF', OpenMode, thandle_t(@IOWrapper), @TIFFReadProc,
     @TIFFWriteProc, @TIFFSeekProc, @TIFFCloseProc,
