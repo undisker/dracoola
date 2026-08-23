@@ -24,7 +24,8 @@ interface
 {$ENDIF}
 
 uses
-  Types, SysUtils, Classes, ImagingTypes, Imaging, ImagingUtility, ImagingFormats, dzlib;
+  Types, SysUtils, Classes, ImagingTypes, Imaging, ImagingUtility,
+  ImagingFormats, ImagingZLib;
 
 type
   { Basic class for Network Graphics file formats loaders/savers.}
@@ -2685,7 +2686,7 @@ finalization
     
   -- 0.15 Changes/Bug Fixes -----------------------------------
     - when saving indexed images save alpha to tRNS?
-    - added some defines and ifdefs to dzlib unit to allow choosing
+    - added some defines and ifdefs to the ZLib unit to allow choosing
       impaszlib, fpc's paszlib, zlibex or other zlib implementation
     - added colorkeying support
     - fixed 16bit channel image handling - pixels were not swapped
