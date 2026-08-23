@@ -1,6 +1,8 @@
 {*******************************************************}
 {                                                       }
 {       ZLIB Data Compression Interface Unit            }
+{       (named dzlib before 2026-08-24 - renamed to      }
+{        match upstream galfar/imaginglib 5424472)       }
 {       Modified for Dracoola Imaging Library            }
 {       FreePascal-only fork with zlib-ng support       }
 {                                                       }
@@ -14,7 +16,7 @@
   - FPCPASZLIB: Use FPC's built-in paszlib (fallback)
 }
 
-unit dzlib;
+unit ImagingZLib;
 
 {$I ..\ImagingOptions.inc}
 
