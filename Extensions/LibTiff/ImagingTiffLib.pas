@@ -25,11 +25,15 @@ unit ImagingTiffLib;
 
 {$I ImagingOptions.inc}
 
-{$IF Defined(POSIX) and Defined(CPUX64)}
-  // Workaround for problem on 64bit Linux where thandle_t in libtiff is
-  // still 32bit so it cannot be used to pass pointers (for IO functions).
-  {$DEFINE HANDLE_NOT_POINTER_SIZED}
-{$IFEND}
+{ The HANDLE_NOT_POINTER_SIZED workaround that used to live here is gone.
+  It existed because thandle_t was declared as THandle, which is 32-bit on
+  FPC unix targets, so the client-data pointer was truncated. Worse, it was
+  guarded on CPUX64 - Apple Silicon is CPUAARCH64, so on macOS ARM64 the
+  workaround did not compile in and the truncating cast ran unguarded.
+  It also routed every TIFF operation through a single unit-level global,
+  which is not thread-safe. thandle_t is now correctly a Pointer
+  (LibTiffDynLib), so none of that is needed.
+  Upstream: galfar/imaginglib 9c193d9. }
 
 interface
 
@@ -66,45 +70,36 @@ type
   end;
   PTiffIOWrapper = ^TTiffIOWrapper;
 
-{$IFDEF HANDLE_NOT_POINTER_SIZED}
-var
-  TiffIOWrapper: TTiffIOWrapper;
-{$ENDIF}
-
-function GetTiffIOWrapper(Fd: THandle): PTiffIOWrapper;
+function GetTiffIOWrapper(Handle: thandle_t): PTiffIOWrapper; inline;
 begin
-{$IFDEF HANDLE_NOT_POINTER_SIZED}
-  Result := @TiffIOWrapper;
-{$ELSE}
-  Result := PTiffIOWrapper(Fd);
-{$ENDIF}
+  Result := PTiffIOWrapper(Handle);
 end;
 
-function TIFFReadProc(Fd: THandle; Buffer: Pointer; Size: Integer): Integer; cdecl;
+function TIFFReadProc(Handle: thandle_t; Buffer: Pointer; Size: tmsize_t): tmsize_t; cdecl;
 var
   Wrapper: PTiffIOWrapper;
 begin
-  Wrapper := GetTiffIOWrapper(Fd);
+  Wrapper := GetTiffIOWrapper(Handle);
   Result := Wrapper.IO.Read(Wrapper.Handle, Buffer, Size);
 end;
 
-function TIFFWriteProc(Fd: THandle; Buffer: Pointer; Size: Integer): Integer; cdecl;
+function TIFFWriteProc(Handle: thandle_t; Buffer: Pointer; Size: tmsize_t): tmsize_t; cdecl;
 var
   Wrapper: PTiffIOWrapper;
 begin
-  Wrapper := GetTiffIOWrapper(Fd);
+  Wrapper := GetTiffIOWrapper(Handle);
   Result := Wrapper.IO.Write(Wrapper.Handle, Buffer, Size);
 end;
 
-function TIFFSizeProc(Fd: THandle): toff_t; cdecl;
+function TIFFSizeProc(Handle: thandle_t): toff_t; cdecl;
 var
   Wrapper: PTiffIOWrapper;
 begin
-  Wrapper := GetTiffIOWrapper(Fd);
+  Wrapper := GetTiffIOWrapper(Handle);
   Result := ImagingIO.GetInputSize(Wrapper.IO, Wrapper.Handle);
 end;
 
-function TIFFSeekProc(Fd: THandle; Offset: toff_t; Where: Integer): toff_t; cdecl;
+function TIFFSeekProc(Handle: thandle_t; Offset: toff_t; Where: Integer): toff_t; cdecl;
 const
   SEEK_SET = 0;
   SEEK_CUR = 1;
@@ -113,7 +108,7 @@ var
   Mode: TSeekMode;
   Wrapper: PTiffIOWrapper;
 begin
-  Wrapper := GetTiffIOWrapper(Fd);
+  Wrapper := GetTiffIOWrapper(Handle);
   if Offset = $FFFFFFFF then
   begin
     Result := $FFFFFFFF;
@@ -129,17 +124,17 @@ begin
   Result := Wrapper.IO.Seek(Wrapper.Handle, Offset, Mode);
 end;
 
-function TIFFCloseProc(Fd: THandle): Integer; cdecl;
+function TIFFCloseProc(Handle: thandle_t): Integer; cdecl;
 begin
   Result := 0;
 end;
 
-function TIFFNoMapProc(Fd: THandle; Base: PPointer; Size: PCardinal): Integer; cdecl;
+function TIFFNoMapProc(Handle: thandle_t; Base: PPointer; Size: PCardinal): Integer; cdecl;
 begin
   Result := 0;
 end;
 
-procedure TIFFNoUnmapProc(Fd: THandle; Base: Pointer; Size: Cardinal); cdecl;
+procedure TIFFNoUnmapProc(Handle: thandle_t; Base: Pointer; Size: Cardinal); cdecl;
 begin
 end;
 
@@ -223,17 +218,17 @@ begin
   // Set up IO wrapper and open TIFF
   IOWrapper.IO := GetIO;
   IOWrapper.Handle := Handle;
-{$IFDEF HANDLE_NOT_POINTER_SIZED}
-  TiffIOWrapper := IOWrapper;
-{$ENDIF}
-
-  Tiff := TIFFClientOpen('LibTIFF', 'r', THandle(@IOWrapper), @TIFFReadProc,
+  Tiff := TIFFClientOpen('LibTIFF', 'r', thandle_t(@IOWrapper), @TIFFReadProc,
     @TIFFWriteProc, @TIFFSeekProc, @TIFFCloseProc,
     @TIFFSizeProc, @TIFFNoMapProc, @TIFFNoUnmapProc);
 
-  if Tiff <> nil then
-    TIFFSetFileNo(Tiff, THandle(@IOWrapper))
-  else
+  { TIFFSetFileno used to be called here with @IOWrapper. It sets libtiff's
+    internal tif_fd, which is an int file descriptor, NOT the client data -
+    so this both meant the wrong thing and truncated a 64-bit pointer into
+    an Integer parameter. TIFFClientOpen already carries the wrapper through
+    thandle_t, which is what the callbacks receive, and nothing in this
+    library ever read the descriptor back. Upstream does not call it. }
+  if Tiff = nil then
     Exit;
 
   NumDirectories := TIFFNumberOfDirectories(Tiff);
@@ -468,19 +463,13 @@ begin
   // Set up IO wrapper and open TIFF
   IOWrapper.IO := GetIO;
   IOWrapper.Handle := Handle;
-{$IFDEF HANDLE_NOT_POINTER_SIZED}
-  TiffIOWrapper := IOWrapper;
-{$ENDIF}
-
   OpenMode := 'w';
 
-  Tiff := TIFFClientOpen('LibTIFF', OpenMode, THandle(@IOWrapper), @TIFFReadProc,
+  Tiff := TIFFClientOpen('LibTIFF', OpenMode, thandle_t(@IOWrapper), @TIFFReadProc,
     @TIFFWriteProc, @TIFFSeekProc, @TIFFCloseProc,
     @TIFFSizeProc, @TIFFNoMapProc, @TIFFNoUnmapProc);
 
-  if Tiff <> nil then
-    TIFFSetFileNo(Tiff, THandle(@IOWrapper))
-  else
+  if Tiff = nil then
     Exit;
 
   for I := FFirstIdx to FLastIdx do
