@@ -1,5 +1,5 @@
 {
-  Dracoola Imaging Library - zlib-ng Bindings
+  Vampyre Imaging Library - zlib-ng Bindings
   FreePascal bindings for zlib-ng library
 
   zlib-ng is a fork of zlib with optimizations including:

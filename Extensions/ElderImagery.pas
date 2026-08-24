@@ -1,5 +1,5 @@
 {
-  Dracoola Imaging Library
+  Vampyre Imaging Library
   by Marek Mauder
   https://github.com/galfar/imaginglib
   https://imaginglib.sourceforge.io
@@ -9,7 +9,7 @@
   file, You can obtain one at https://mozilla.org/MPL/2.0.
 } 
 
-{ This is basic unit of Elder Imagery extension for Dracoola Imaging Library.
+{ This is basic unit of Elder Imagery extension for Vampyre Imaging Library.
   It adds support for loading and saving of images and textures from older
   Bethesda games (like TES2: Daggerfall, Redguard, Terminator: FS, TES: Arena, ...).
   This unit registers all file formats declared in additional ElderImagery units

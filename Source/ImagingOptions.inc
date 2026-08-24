@@ -80,7 +80,7 @@
 
 { FreePascal-only fork - Delphi support removed }
 {$IFNDEF FPC}
-  {$FATAL This fork of Dracoola Imaging Library requires Free Pascal Compiler}
+  {$FATAL This fork of Vampyre Imaging Library requires Free Pascal Compiler}
 {$ENDIF}
 
 {$IFDEF DEBUG}

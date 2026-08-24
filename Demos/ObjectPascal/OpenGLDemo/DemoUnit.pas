@@ -1,5 +1,5 @@
 {
-  Dracoola Imaging Library Demo
+  Vampyre Imaging Library Demo
   OpenGL Demo (OpenGL extension)
 
   Demo that shows how to create OpenGL textures from files
@@ -47,7 +47,7 @@ uses
   DemoUtils;
 
 const
-  SWindowTitle = 'Dracoola Imaging Library (%s) - OpenGL Demo (format: %s)';
+  SWindowTitle = 'Vampyre Imaging Library (%s) - OpenGL Demo (format: %s)';
   SWindowIconTitle = 'OpenGL Demo';
   SBackImageFile = 'Tigers.jng';
   SSpriteImageFile = 'Vezyr.png';

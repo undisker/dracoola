@@ -4,7 +4,7 @@
     <PathDelim Value="\"/>
     <Name Value="DracoolaImagingPackageExt"/>
     <Type Value="RunAndDesignTime"/>
-    <Author Value="Dracoola Imaging Library (Fork of Vampyre Imaging Library)"/>
+    <Author Value="Vampyre Imaging Library (Fork of Vampyre Imaging Library)"/>
     <CompilerOptions>
       <Version Value="11"/>
       <PathDelim Value="\"/>
@@ -35,7 +35,7 @@
         </OtherDefines>
       </Other>
     </CompilerOptions>
-    <Description Value="Dracoola Imaging Library Package for Lazarus - Extensions. High-performance image loading, saving, and manipulation library."/>
+    <Description Value="Vampyre Imaging Library Package for Lazarus - Extensions. High-performance image loading, saving, and manipulation library."/>
     <License Value="MPL 2.0 (GPL compatible)"/>
     <Version Major="1" Minor="0"/>
     <Files Count="20">

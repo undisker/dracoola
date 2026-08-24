@@ -24,7 +24,7 @@
         </Verbosity>
       </Other>
     </CompilerOptions>
-    <Description Value="Dracoola Imaging Library Package for Lazarus - Addon for Graphics32. Imaging is image loading, saving, and manipulation library."/>
+    <Description Value="Vampyre Imaging Library Package for Lazarus - Addon for Graphics32. Imaging is image loading, saving, and manipulation library."/>
     <License Value="MPL 2.0 (GPL compatible) "/>
     <Version Minor="82"/>
     <Files Count="1">

@@ -3,7 +3,7 @@
 {       ZLIB Data Compression Interface Unit            }
 {       (named dzlib before 2026-08-24 - renamed to      }
 {        match upstream galfar/imaginglib 5424472)       }
-{       Modified for Dracoola Imaging Library            }
+{       Modified for Vampyre Imaging Library            }
 {       FreePascal-only fork with zlib-ng support       }
 {                                                       }
 {*******************************************************}
