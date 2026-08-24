@@ -1,5 +1,5 @@
 {
-  Dracoola Imaging Library - LibJpeg-turbo Bindings
+  Vampyre Imaging Library - LibJpeg-turbo Bindings
   FreePascal bindings for libjpeg-turbo library
 
   libjpeg-turbo is a JPEG image codec that uses SIMD instructions (MMX, SSE2,

@@ -36,7 +36,7 @@
 
   Headers translated to Object Pascal and C code precompiled
   by Marek Mauder (http://galfar.vevb.net)
-  for Dracoola Imaging Library (http://imaginglib.sourceforge.net).
+  for Vampyre Imaging Library (http://imaginglib.sourceforge.net).
 
   Supported compilers and platforms:
   Delphi: Windows 32b

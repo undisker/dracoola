@@ -3,7 +3,7 @@
   <Package Version="5">
     <Name Value="DracoolaImagingPackage"/>
     <Type Value="RunAndDesignTime"/>
-    <Author Value="Dracoola Imaging Library (Fork of Vampyre Imaging Library)"/>
+    <Author Value="Vampyre Imaging Library (Fork of Vampyre Imaging Library)"/>
     <CompilerOptions>
       <Version Value="11"/>
       <SearchPaths>
@@ -33,10 +33,10 @@
         </OtherDefines>
       </Other>
     </CompilerOptions>
-    <Description Value="Dracoola Imaging Library Package for Lazarus. High-performance FreePascal-only image loading, saving, and manipulation library with SIMD acceleration."/>
+    <Description Value="Vampyre Imaging Library Package for Lazarus. High-performance FreePascal-only image loading, saving, and manipulation library with SIMD acceleration."/>
     <License Value="MPL 2.0 (GPL compatible)"/>
     <Version Major="1" Minor="0"/>
-    <Files Count="24">
+    <Files Count="20">
       <Item1>
         <Filename Value="../Source/Imaging.pas"/>
         <UnitName Value="Imaging"/>
@@ -110,29 +110,13 @@
         <UnitName Value="ImagingQoi"/>
       </Item18>
       <Item19>
-        <Filename Value="../Source/ImagingMemory.pas"/>
-        <UnitName Value="ImagingMemory"/>
-      </Item19>
-      <Item20>
-        <Filename Value="../Source/ImagingSimd.pas"/>
-        <UnitName Value="ImagingSimd"/>
-      </Item20>
-      <Item21>
-        <Filename Value="../Source/ImagingSimdResize.pas"/>
-        <UnitName Value="ImagingSimdResize"/>
-      </Item21>
-      <Item22>
-        <Filename Value="../Source/ImagingThreadPool.pas"/>
-        <UnitName Value="ImagingThreadPool"/>
-      </Item22>
-      <Item23>
         <Filename Value="../Source/JpegTurbo/libjpegturbo.pas"/>
         <UnitName Value="libjpegturbo"/>
-      </Item23>
-      <Item24>
+      </Item19>
+      <Item20>
         <Filename Value="../Source/ZLib/zlibng_bindings.pas"/>
         <UnitName Value="zlibng_bindings"/>
-      </Item24>
+      </Item20>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="1">

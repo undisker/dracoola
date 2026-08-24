@@ -1,5 +1,5 @@
 {
-  Dracoola Imaging Library
+  Vampyre Imaging Library
   by Marek Mauder
   https://github.com/galfar/imaginglib
   https://imaginglib.sourceforge.io
@@ -302,7 +302,7 @@ function THdrFileFormat.SaveData(Handle: TImagingHandle;
   const Images: TDynImageDataArray; Index: LongInt): Boolean;
 const
   LineEnd = #$0A;
-  SPrgComment = '#Made with Dracoola Imaging Library';
+  SPrgComment = '#Made with Vampyre Imaging Library';
   SSizeFmt = '-Y %d +X %d';
 var
   ImageToSave: TImageData;

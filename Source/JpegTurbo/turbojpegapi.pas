@@ -1,5 +1,5 @@
 {
-  Dracoola Imaging Library - TurboJPEG API Bindings
+  Vampyre Imaging Library - TurboJPEG API Bindings
   FreePascal bindings for libjpeg-turbo's native TurboJPEG API
 
   TurboJPEG is a simpler, higher-level API that doesn't require dealing with

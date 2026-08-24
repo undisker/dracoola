@@ -1,5 +1,5 @@
 {
-  Dracoola Imaging Library Demo
+  Vampyre Imaging Library Demo
   LCL Imager (ObjectPascal, high level/component sets/canvas, Win32/Linux/macOS)
   tested in Lazarus 2.2.0 (Windows; Linux: Gtk2, Qt; macOS: Carbon, Cocoa)
   written by Marek Mauder
@@ -284,7 +284,7 @@ type
   end; 
 
 const
-  SWindowTitle = 'LCL Imager - Dracoola Imaging Library %s Demo';
+  SWindowTitle = 'LCL Imager - Vampyre Imaging Library %s Demo';
   
 var
   MainForm: TMainForm;

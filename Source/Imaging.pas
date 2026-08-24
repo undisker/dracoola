@@ -1,5 +1,5 @@
 ﻿{
-  Dracoola Imaging Library
+  Vampyre Imaging Library
   by Marek Mauder
   https://github.com/galfar/imaginglib
   https://imaginglib.sourceforge.io
@@ -677,7 +677,7 @@ procedure RaiseImaging(const Msg: string; const Args: array of const); overload;
 procedure RaiseImaging(const Msg: string); overload; {$IFDEF USE_INLINE}inline;{$ENDIF}
 
 const
-  SImagingLibTitle = 'Dracoola Imaging Library';
+  SImagingLibTitle = 'Vampyre Imaging Library';
 
 implementation
 

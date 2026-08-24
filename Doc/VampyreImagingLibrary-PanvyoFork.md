@@ -1,4 +1,4 @@
-# Dracoola Imaging Library
+# Vampyre Imaging Library — Panvyo fork
 
 ![Imaging Logo](https://raw.githubusercontent.com/undisker/dracoola/refs/heads/master/Demos/Data/Logo.png)
 
@@ -59,16 +59,19 @@ Version: 2025.01
 
 ### About
 
-**Dracoola Imaging Library** is a high-performance FreePascal-only fork of the Vampyre Imaging Library. It is a native Object Pascal image loading, saving, and manipulation library optimized for modern hardware with SIMD acceleration and multi-threading support.
+This is a FreePascal-only fork of the **Vampyre Imaging Library** by Marek Mauder, maintained for use in Panvyo. It swaps the bundled pure-Pascal codecs for their C counterparts (libjpeg-turbo, zlib-ng, dynamic OpenJPEG and LibTiff). The API, unit names and pixel layout are upstream's, unchanged.
 
-Motivation was to get a modern Version of slightly outdated original Vampyre Imaging Library.
+Motivation was faster decoding of the formats a file viewer opens most, without changing the API.
+
+> **Note:** earlier revisions of this document described SIMD acceleration and
+> multi-threading as features. Those units were never wired into any call path
+> and were removed on 2026-08-24. See `readme.md`.
 
 Key improvements over the original Vampyre library:
 - **FreePascal-only**: Removed all Delphi-specific code for cleaner codebase
 - **TurboJPEG API**: Native libjpeg-turbo integration for SIMD-accelerated JPEG processing
 - **zlib-ng**: High-performance zlib replacement for faster PNG/compression operations
 - **SIMD pixel conversions**: SSE2/AVX2 on x64, NEON on ARM64
-- **Multi-threading**: Parallel tile processing for large Images
 - **BGRABitmap**: Demos are based on modern BGRA package instead of own components
 
 ### Features
@@ -110,13 +113,23 @@ Key improvements over the original Vampyre library:
 
 ### License & Credits
 
-Dracoola Imaging Library is available under dual licensing:
-- **Mozilla Public License 2.0 (MPL-2.0)**
-- **GNU Lesser General Public License (LGPL)**
+This is a fork of the **Vampyre Imaging Library** by Marek Mauder, and it is
+licensed exactly as upstream is: **Mozilla Public License 2.0 (MPL-2.0)**, and
+nothing else.
 
-You may choose whichever license fits your needs best.
+An earlier version of this document claimed the library was "available under
+dual licensing" with the LGPL and that you "may choose whichever license fits
+your needs best". **That was wrong and has been removed.** Upstream Vampyre has
+only ever been MPL-2.0; a fork cannot offer someone else's code under a licence
+its copyright holder never granted. If you obtained this library relying on
+that statement, the licence that actually applies is MPL-2.0.
 
-Original library developed by Marek Mauder, forked by Oleg Akopov
+MPL-2.0 is file-level copyleft: modified MPL files must be made available in
+source form, which they are — this repository is public. Code you write in
+separate files is not affected.
+
+Original library by Marek Mauder (<https://github.com/galfar/imaginglib>).
+This fork is maintained by Oleg Akopov for use in Panvyo.
 
 ---
 
@@ -170,7 +183,7 @@ Add the source directories to your project's search paths in Project Options.
 
 ### Dependencies
 
-Dracoola requires the following external libraries at runtime:
+this fork requires the following external libraries at runtime:
 
 #### Core Libraries (Required)
 
@@ -587,7 +600,7 @@ end;
 
 ### TurboJPEG Integration
 
-Dracoola uses the native **TurboJPEG API** (tj3* functions) from libjpeg-turbo for JPEG processing instead of obsolete libjpeg API:
+this fork uses the native **TurboJPEG API** (tj3* functions) from libjpeg-turbo for JPEG processing instead of obsolete libjpeg API:
 
 - **SIMD acceleration**: Uses SSE2/AVX2 on x64, NEON on ARM64
 - **Simple API**: No complex C struct alignment issues
@@ -934,7 +947,7 @@ Version changed from `0.xx.x` to `YYYY.MM`:
 
 ## Credits
 
-### Dracoola
+### this fork
 
 - High-performance FreePascal-only fork by Oleg Akopov
 - TurboJPEG and zlib-ng integration
@@ -956,4 +969,4 @@ Version changed from `0.xx.x` to `YYYY.MM`:
 
 ---
 
-*This documentation is for Dracoola Imaging Library version 2025.01*
+*This documentation is for this fork version 2025.01*

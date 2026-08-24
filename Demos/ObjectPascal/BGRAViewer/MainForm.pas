@@ -81,7 +81,7 @@ procedure TFormMain.FormCreate(Sender: TObject);
 var
   DataPath: string;
 begin
-  Caption := 'BGRA Image Viewer - Dracoola Imaging Library';
+  Caption := 'BGRA Image Viewer - Vampyre Imaging Library';
   FImage := TSingleImage.Create;
   FBGRABitmap := TBGRABitmap.Create(1, 1);
   FFitToWindow := True;
@@ -171,7 +171,7 @@ procedure TFormMain.MenuAboutClick(Sender: TObject);
 begin
   MessageDlg('About',
     'BGRA Image Viewer'#13#10 +
-    'Using Dracoola Imaging Library ' + Imaging.GetVersionStr + #13#10 +
+    'Using Vampyre Imaging Library ' + Imaging.GetVersionStr + #13#10 +
     #13#10 +
     'Demonstrates using Dracoola Imaging for loading'#13#10 +
     'and BGRABitmap for high-performance display.'#13#10 +

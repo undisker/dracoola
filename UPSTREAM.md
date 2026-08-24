@@ -2,8 +2,9 @@
 
 This repository is a fork of
 [galfar/imaginglib](https://github.com/galfar/imaginglib) (Vampyre Imaging
-Library, MPL-2.0). Modified files carry the fork's own header; upstream
-copyright and the MPL notice are unchanged.
+Library, **MPL-2.0**). Source headers are upstream's, verbatim - this fork
+carries no separate branding, and it is not a separate product. The repository
+is named `dracoola` for historical reasons only.
 
 ## Fork point
 
@@ -41,8 +42,10 @@ Two things still complicate a plain `git cherry-pick`:
 
 1. **Line endings.** Upstream blobs and ours differ, so patches must be
    normalised first.
-2. **The header rebrand.** Every file's banner says *Dracoola Imaging Library*
-   where upstream says *Vampyre Imaging Library*.
+2. ~~The header rebrand.~~ **Fixed 2026-08-24** — the headers were restored to
+   upstream's exact text, so unmodified files are now byte-identical to
+   upstream once line endings are normalised. The rebrand `sed` is no longer
+   needed in the recipe below.
 
 The reliable recipe, used for the 2026-08-24 port:
 
@@ -50,14 +53,14 @@ The reliable recipe, used for the 2026-08-24 port:
 # normalise a scratch copy of our tree
 mkdir /tmp/w && cp -r Source Extensions /tmp/w/ && cd /tmp/w
 find Source Extensions \( -name '*.pas' -o -name '*.inc' \) \
-  -exec sed -i 's/\r$//; s/Dracoola Imaging Library/Vampyre Imaging Library/' {} +
+  -exec sed -i 's/\r$//' {} +      # line endings only - no rebrand any more
 
 # normalise the patch too - upstream blobs are CRLF
 git -C <repo> show <commit> | sed 's/\r$//' > /tmp/p.patch
 patch -p1 --fuzz=3 < /tmp/p.patch
 
-# then reverse the normalisation on the way back
-sed 's/Vampyre Imaging Library/Dracoola Imaging Library/' f | sed 's/$/\r/' > <repo>/f
+# then restore CRLF on the way back
+sed 's/$/\r/' f > <repo>/f
 ```
 
 **Check `--fuzz` results.** During the 2026-08-24 port a fuzzy hunk placed a
@@ -69,13 +72,15 @@ These are the reason the fork exists. Do not lose them to an upstream merge.
 
 | Area | Units |
 |---|---|
-| SIMD | `ImagingSimd.pas`, `ImagingSimdResize.pas` |
-| Threading | `ImagingThreadPool.pas` |
-| Memory | `ImagingMemory.pas` |
 | JPEG | `JpegTurbo/` — libjpeg-turbo instead of the pure-Pascal JpegLib |
 | ZLib | `ZLib/zlibng_bindings.pas` — zlib-ng |
 | JPEG 2000 | `Extensions/OpenJpegDynLib.pas` — dynamic, not vendored `.obj` |
 | Diagnostics | `libloaderror.inc` — records *why* a codec library failed to load |
+
+**Removed 2026-08-24:** `ImagingSimd`, `ImagingSimdResize`, `ImagingThreadPool`
+and `ImagingMemory` — ~4,200 lines that no unit and no application ever
+referenced. They were dead weight the readme nonetheless advertised as
+features. Re-add only against a benchmark and a real call path.
 
 The fork is also **FPC-only** by an explicit `{$FATAL}` guard in
 `ImagingOptions.inc`, so upstream's Delphi-specific fixes never apply here, and

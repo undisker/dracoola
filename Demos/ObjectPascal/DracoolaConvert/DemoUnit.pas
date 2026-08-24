@@ -1,5 +1,5 @@
 {
-  Dracoola Imaging Library Demo
+  Vampyre Imaging Library Demo
   Dracoola Image Converter (core low level API)
 
   Image Converter is command line tool for converting images between

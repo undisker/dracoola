@@ -1,5 +1,5 @@
 {
-  Dracoola Imaging Library Demo
+  Vampyre Imaging Library Demo
   Image Browser (class api, canvas, VCL/LCL interaction)
 
   This simple viewer application shows usage of high level class interface

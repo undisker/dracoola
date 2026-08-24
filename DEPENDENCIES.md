@@ -1,4 +1,4 @@
-# Dracoola Imaging Library - Dependencies
+# Vampyre Imaging Library (Panvyo fork) - Dependencies
 
 This document lists all external dependencies for the library, organized by component.
 
