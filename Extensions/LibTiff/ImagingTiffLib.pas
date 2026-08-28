@@ -223,6 +223,176 @@ var
   Ptr: PByte;
   Red, Green, Blue: PWordRecArray;
 
+  { One sample of aBits bits, MSB-first, at sample index aIdx in a packed row.
+    TIFF packs samples end to end with no padding between them; only the ROW
+    is padded to a byte boundary. }
+  function GetPackedSample(aRow: PByte; aIdx, aBits: Integer): LongWord;
+  var
+    iI, iBit: Integer;
+  begin
+    Result := 0;
+    iBit := aIdx * aBits;
+    for iI := 0 to aBits - 1 do
+    begin
+      Result := (Result shl 1) or
+        ((aRow[(iBit + iI) shr 3] shr (7 - ((iBit + iI) and 7))) and 1);
+    end;
+  end;
+
+  { Scale a sample from aBits to 8 or 16 bits, spreading it over the full
+    output range rather than just shifting - a 2-bit 3 must become 255, not
+    192, or every low-depth image comes out dark. }
+  function ScaleSample(aVal: LongWord; aBits, aOutBits: Integer): LongWord;
+  var
+    iMaxIn, iMaxOut: LongWord;
+  begin
+    if aBits >= aOutBits then
+      Result := aVal shr (aBits - aOutBits)
+    else
+    begin
+      iMaxIn := (LongWord(1) shl aBits) - 1;
+      iMaxOut := (LongWord(1) shl aOutBits) - 1;
+      if iMaxIn = 0 then Exit(0);
+      Result := (aVal * iMaxOut + iMaxIn div 2) div iMaxIn;
+    end;
+  end;
+
+  { Decode a TIFF whose samples are packed at an unusual bit depth into an
+    8- or 16-bit Imaging image. Output width is chosen by depth: anything at
+    or below 8 bits becomes 8-bit, anything above becomes 16-bit, so a 12-bit
+    scan keeps its precision and a 4-bit one does not waste memory.
+
+    Note the channel order: Imaging stores ifR8G8B8 as B,G,R in memory, so the
+    samples are written in that order here rather than being read in TIFF
+    order and swapped afterwards. }
+  procedure ReadPackedOddDepth(Tiff: PTIFF; var Image: TImageData;
+    aBits, aSpp, aPhoto, aPlanar: Integer);
+  var
+    iOutBits, iW, iH, iRow, iX, iC, iScanSize: Integer;
+    iFmt: TImageFormat;
+    iBuf: PByte;
+    iDst8: PByte;
+    iDst16: PWord;
+    iVal: LongWord;
+    iSep: Boolean;
+    iPalR, iPalG, iPalB: PWordRecArray;
+    iChan: Integer;
+  begin
+    iW := Image.Width;
+    iH := Image.Height;
+    if aBits <= 8 then iOutBits := 8 else iOutBits := 16;
+
+    if aPhoto = PHOTOMETRIC_PALETTE then
+    begin
+      { A palette at more than 8 bits would need a colormap Imaging's indexed
+        formats cannot hold, so palette images are expanded to RGB here
+        whatever their depth. }
+      if iOutBits = 8 then iFmt := ifR8G8B8 else iFmt := ifR16G16B16;
+    end
+    else if aPhoto = PHOTOMETRIC_RGB then
+    begin
+      if iOutBits = 8 then iFmt := ifR8G8B8 else iFmt := ifR16G16B16;
+    end
+    else
+    begin
+      if iOutBits = 8 then iFmt := ifGray8 else iFmt := ifGray16;
+    end;
+
+    NewImage(iW, iH, iFmt, Image);
+    iScanSize := TIFFScanlineSize(Tiff);
+    if iScanSize <= 0 then Exit;
+
+    iPalR := nil; iPalG := nil; iPalB := nil;
+    if aPhoto = PHOTOMETRIC_PALETTE then
+      TIFFGetField(Tiff, TIFFTAG_COLORMAP, @iPalR, @iPalG, @iPalB);
+
+    { PLANARCONFIG_SEPARATE stores each channel as its own set of scanlines,
+      so the row has to be read once per channel with the sample index passed
+      through - which is also why CanAccessScanlines rejected these. }
+    iSep := (aPlanar = PLANARCONFIG_SEPARATE) and (aSpp > 1);
+
+    GetMem(iBuf, iScanSize);
+    try
+      for iRow := 0 to iH - 1 do
+      begin
+        if iSep then
+        begin
+          for iC := 0 to aSpp - 1 do
+          begin
+            if TIFFReadScanline(Tiff, iBuf, iRow, iC) < 0 then Exit;
+            { TIFF channel order is R,G,B; Imaging wants B,G,R. }
+            iChan := aSpp - 1 - iC;
+            for iX := 0 to iW - 1 do
+            begin
+              iVal := ScaleSample(GetPackedSample(iBuf, iX, aBits), aBits, iOutBits);
+              if iOutBits = 8 then
+              begin
+                iDst8 := PByte(Image.Bits) + (iRow * iW + iX) * aSpp + iChan;
+                iDst8^ := Byte(iVal);
+              end
+              else
+              begin
+                iDst16 := PWord(PByte(Image.Bits) +
+                  ((iRow * iW + iX) * aSpp + iChan) * 2);
+                iDst16^ := Word(iVal);
+              end;
+            end;
+          end;
+          Continue;
+        end;
+
+        if TIFFReadScanline(Tiff, iBuf, iRow, 0) < 0 then Exit;
+
+        if aPhoto = PHOTOMETRIC_PALETTE then
+        begin
+          for iX := 0 to iW - 1 do
+          begin
+            iVal := GetPackedSample(iBuf, iX, aBits);
+            if iOutBits = 8 then
+            begin
+              iDst8 := PByte(Image.Bits) + (iRow * iW + iX) * 3;
+              iDst8[0] := iPalB^[iVal].High;
+              iDst8[1] := iPalG^[iVal].High;
+              iDst8[2] := iPalR^[iVal].High;
+            end
+            else
+            begin
+              iDst16 := PWord(PByte(Image.Bits) + (iRow * iW + iX) * 6);
+              iDst16[0] := iPalB^[iVal].WordValue;
+              iDst16[1] := iPalG^[iVal].WordValue;
+              iDst16[2] := iPalR^[iVal].WordValue;
+            end;
+          end;
+          Continue;
+        end;
+
+        for iX := 0 to iW - 1 do
+          for iC := 0 to aSpp - 1 do
+          begin
+            iVal := ScaleSample(GetPackedSample(iBuf, iX * aSpp + iC, aBits),
+                                aBits, iOutBits);
+            { MinIsWhite is the photometric inverse - 0 is white. }
+            if aPhoto = PHOTOMETRIC_MINISWHITE then
+              iVal := ((LongWord(1) shl iOutBits) - 1) - iVal;
+            if aSpp = 3 then iChan := 2 - iC else iChan := iC;
+            if iOutBits = 8 then
+            begin
+              iDst8 := PByte(Image.Bits) + (iRow * iW + iX) * aSpp + iChan;
+              iDst8^ := Byte(iVal);
+            end
+            else
+            begin
+              iDst16 := PWord(PByte(Image.Bits) +
+                ((iRow * iW + iX) * aSpp + iChan) * 2);
+              iDst16^ := Word(iVal);
+            end;
+          end;
+      end;
+    finally
+      FreeMem(iBuf);
+    end;
+  end;
+
   procedure LoadMetadata(Tiff: PTiff; PageIndex: Integer);
   var
     TiffResUnit, CompressionScheme: Word;
@@ -387,7 +557,34 @@ begin
       end;
     end;
 
-    if DataFormat = ifUnknown then
+    { Packed integer samples at a bit depth with no Imaging equivalent.
+      libtiff's RGBA interface refuses these outright - "Sorry, can not handle
+      images with 12-bit samples" - which cost 23 of the 61 files in its own
+      test set (pics-3.8.0). But the RGBA interface is a convenience layer:
+      TIFFReadScanline still returns the DECOMPRESSED row, merely with the
+      samples packed at their native width. Unpacking them is arithmetic, and
+      that is what this does.
+
+      Handled: 2/4/6/10/12/14/24/32-bit unsigned samples, grayscale, RGB and
+      palette, in both contiguous and separated planar layouts. 1, 8 and 16
+      bits are NOT routed here - they already have direct formats above. }
+    if (DataFormat = ifUnknown) and (SampleFormat = SAMPLEFORMAT_UINT) and
+       (((BitsPerSample in [2, 4, 6, 10, 12, 14, 24, 32]) and
+         (((Photometric in [PHOTOMETRIC_MINISBLACK, PHOTOMETRIC_MINISWHITE]) and (SamplesPerPixel = 1)) or
+          ((Photometric = PHOTOMETRIC_RGB) and (SamplesPerPixel = 3)) or
+          ((Photometric = PHOTOMETRIC_PALETTE) and (SamplesPerPixel = 1)))) or
+        { A 16-bit PALETTE falls between the two paths: the direct mapping
+          above handles palettes only at 8 bits, and the RGBA interface will
+          not take it either. 16 is allowed here for palette alone - claiming
+          it generally would steal 16-bit grey and RGB from the direct path,
+          which handles them better. }
+        ((BitsPerSample = 16) and (Photometric = PHOTOMETRIC_PALETTE) and
+         (SamplesPerPixel = 1))) then
+    begin
+      ReadPackedOddDepth(Tiff, Images[Idx], BitsPerSample, SamplesPerPixel,
+        Photometric, PlanarConfig);
+    end
+    else if DataFormat = ifUnknown then
     begin
       // Use RGBA interface to read A8R8G8B8 TIFFs and mainly TIFFs in various
       // formats with no Imaging equivalent, exotic color spaces etc.
