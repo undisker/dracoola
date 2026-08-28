@@ -133,7 +133,10 @@ begin
       1:
         case Hdr.Planes of
           1: FileDataFormat := ifMono;
-          4: FileDataFormat := ifIndex4;
+          // Three 1-bit planes is an 8-colour image. Rarer than the 4-plane
+          // EGA layout but the same encoding with one plane fewer, and it maps
+          // into a nibble just as well.
+          3, 4: FileDataFormat := ifIndex4;
         end;
       2: FileDataFormat := ifIndex2;
       4: FileDataFormat := ifIndex4;
@@ -153,6 +156,22 @@ begin
     // like ifMono are converted later to ifIndex8)
     Width := Hdr.X1 - Hdr.X0 + 1;
     Height := Hdr.Y1 - Hdr.Y0 + 1;
+
+    // A corrupt window gives X1 < X0 and therefore a NEGATIVE width. NewImage
+    // below allocates for that, and the row converters further down then write
+    // Width bytes per row into a buffer sized for a negative one - an access
+    // violation inside the decoder, on nothing more than a malformed header.
+    // Four files in the Panvyo PCX corpus do exactly this (xmin=524 with
+    // xmax=335, 359, 455, 367), and they are not exotic: they are scan
+    // fragments whose window was written wrong.
+    if (Width <= 0) or (Height <= 0) then
+      Exit;
+
+    // BytesPerLine must be able to hold one row at the declared depth. When it
+    // is short, the plane converters read BytesPerLine per row but write Width
+    // pixels, running off the end of the destination the same way.
+    if Hdr.BytesPerLine * 8 < Width * Hdr.BitsPerPixel then
+      Exit;
     if FileDataFormat in [ifIndex8, ifR8G8B8] then
       Format := FileDataFormat
     else
@@ -258,7 +277,7 @@ begin
       begin
         // 4bit images can be stored similar to RGB images (in four one bit planes)
         // or like array of nibbles (which is more common)
-        if (Hdr.BitsPerPixel = 1) and (Hdr.Planes = 4) then
+        if (Hdr.BitsPerPixel = 1) and (Hdr.Planes in [3, 4]) then
         begin
           RowPointer := UncompData;
           PixelIdx := Bits;
@@ -267,7 +286,12 @@ begin
             Plane1 := PByteArray(RowPointer);
             Plane2 := @Plane1[Hdr.BytesPerLine];
             Plane3 := @Plane1[Hdr.BytesPerLine * 2];
-            Plane4 := @Plane1[Hdr.BytesPerLine * 3];
+            // Only dereferenced when there IS a fourth plane; a 3-plane file
+            // has nothing at that offset but the next row.
+            if Hdr.Planes = 4 then
+              Plane4 := @Plane1[Hdr.BytesPerLine * 3]
+            else
+              Plane4 := nil;
 
             for J := 0 to Width - 1 do
             begin
@@ -277,7 +301,8 @@ begin
               if (Plane1[ByteNum] shr BitNum) and $1 <> 0 then B := B or $01;
               if (Plane2[ByteNum] shr BitNum) and $1 <> 0 then B := B or $02;
               if (Plane3[ByteNum] shr BitNum) and $1 <> 0 then B := B or $04;
-              if (Plane4[ByteNum] shr BitNum) and $1 <> 0 then B := B or $08;
+              if (Plane4 <> nil) and
+                 ((Plane4[ByteNum] shr BitNum) and $1 <> 0) then B := B or $08;
               PixelIdx^ := B;
               Inc(PixelIdx);
             end;
@@ -335,7 +360,17 @@ begin
       (Hdr.Encoding in [0..1]) and
       (Hdr.BitsPerPixel in [1, 2, 4, 8]) and
       (Hdr.Planes in [1, 3, 4]) and
-      (Hdr.PaletteType in [1..2]);
+      // 0 is accepted as well as 1 and 2. The field was a late addition and a
+      // great many writers leave it zero - eight of the twenty-six PCX files
+      // in the Panvyo corpus do, including plain 1-bit and 4-plane EGA images
+      // that decode perfectly. Rejecting them here was the only thing stopping
+      // them: PaletteType is read NOWHERE else in this unit, so the detector
+      // was refusing files on a field its own decoder ignores.
+      (Hdr.PaletteType <= 2) and
+      // The window must be non-empty. Without this a file with X1 < X0 is
+      // claimed here and then crashes in LoadData; rejecting it up front lets
+      // the caller fall through to its generic handling instead.
+      (Hdr.X1 >= Hdr.X0) and (Hdr.Y1 >= Hdr.Y0);
   end;
 
 end;
